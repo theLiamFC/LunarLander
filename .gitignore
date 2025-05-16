@@ -1,3 +1,10 @@
+.jpg
+.img
+WAC_ROI_NORTH_SUMMER/
+WAC_ROI_SOUTH_SUMMER/
+WAC_ROI_NEARSIDE_DAWN/
+WAC_ROI_FARSIDE_DUSK/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
