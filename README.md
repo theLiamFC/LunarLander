@@ -1,6 +1,6 @@
 # LunarLander
 
-A tool for assembling and rendering composite views of the Moon’s surface using LROC WAC imagery.
+A simulated lunar landing focusing on the implementation of vision based navigation and state estimation techniques.
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -10,7 +10,7 @@ A tool for assembling and rendering composite views of the Moon’s surface usin
 - [Example Usage](#example-usage)
 
 ## Introduction
-LunarLander stitches Wide Angle Camera (WAC) tiles from the Lunar Reconnaissance Orbiter Camera (LROC) into a single image based on a specified field-of-view and altitude.
+LunarLander...
 
 ## User Instructions
 1. **Clone the repository**  
@@ -20,7 +20,7 @@ cd LunarLander
 '''
 2. **Prepare data**  
 Download the required WAC ROI images (see [Image Downloads](#image-downloads)).
-3. **Render and save a tile**  
+3. **Run the simulation**  
 
 ## Dependencies
 - Python 3.7 or higher  
