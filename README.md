@@ -14,7 +14,7 @@ LunarLander...
 
 ## User Instructions
 1. **Clone the repository**
-```console
+```shell
 git clone https://github.com/yourusername/LunarLander.git
 cd LunarLander
 ```
@@ -34,11 +34,11 @@ Download the required WAC ROI images (see [Image Downloads](#image-downloads)).
 Images are sourced from the [LROC PDS archive](https://pds.lroc.asu.edu/data/). We use the Wide Angle Camera (WAC) Region of Interest (ROI) Nearside Dawn collection.
 
 1. Ensure `wget` is installed:  
-```console
+```shell
 brew install wget
 ```
 2. In your target folder, run to selectively download 100M IMG files, corresponding 100M xml files, and the folder README:
-```console
+```shell
 wget -r -l1 -np -nd
 -A "DAWN_E*100M.IMG,DAWN_E*100M.xml,*README.TXT"
 "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/BDR/WAC_ROI/WAC_ROI_NEARSIDE_DAWN/"
