@@ -31,13 +31,13 @@ Download the required WAC ROI images (see [Image Downloads](#image-downloads)).
 - wget (for data download)
 
 ## Image Downloads
-Images are sourced from the [LROC archive](https://lroc.im-ldi.com/data/). We use the Wide Angle Camera (WAC) Region of Interest (ROI) Nearside Dawn collection.
+Images are sourced from the [LROC archive](https://lroc.im-ldi.com/data/). We use the Wide Angle Camera (WAC) Region of Interest (ROI) Nearside Dawn collection at a resolution of 100 meters per pixel (100M).
 
 1. Ensure `wget` is installed:  
 ```shell
 brew install wget
 ```
-2. To selectively download 100M IMG files, corresponding 100M xml files, and the folder README from LROC - in your target folder run:
+2. To selectively download 100M IMG files, corresponding 100M xml files, and the README from LROC - in your target folder run:
 ```shell
 wget -r -l1 -np -nd
 -A "DAWN_E*100M.IMG,DAWN_E*100M.xml,*README.TXT"
