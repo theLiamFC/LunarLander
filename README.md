@@ -37,7 +37,7 @@ Images are sourced from the [LROC PDS archive](https://pds.lroc.asu.edu/data/). 
 ```shell
 brew install wget
 ```
-2. In your target folder, run to selectively download 100M IMG files, corresponding 100M xml files, and the folder README:
+2. To selectively download 100M IMG files, corresponding 100M xml files, and the folder README from LROC - in your target folder run:
 ```shell
 wget -r -l1 -np -nd
 -A "DAWN_E*100M.IMG,DAWN_E*100M.xml,*README.TXT"
