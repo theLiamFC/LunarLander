@@ -47,8 +47,7 @@ class LunarRender:
         self.h = h # image output height (pixels)
         self.fov = np.radians(fov) # degrees
         self.images = {}
-        self.max = [0,0] # lat, lon
-        self.min = [0,0] # lat, lon
+        self.min_max = [0,0,0,0] # x,y,x,y
 
         i=0
         for fname in os.listdir(self.folder_path):
@@ -71,6 +70,11 @@ class LunarRender:
                 'top': src.bounds.top,
                 'transform': src.transform if not wrap else Affine.translation(-10916400.0, 0) * src.transform
             }
+
+            self.min_max = [min(self.images[img_path]['left'], self.min_max[0]),
+                            min(self.images[img_path]['bottom'], self.min_max[1]),
+                            max(self.images[img_path]['right'], self.min_max[2]),      
+                            max(self.images[img_path]['top'], self.min_max[3])]
 
     def __del__(self):
         """
@@ -206,7 +210,7 @@ class LunarRender:
             ] = fragment[:out_h, :out_w]
 
         if np.isnan(tile).any():
-            raise ValueError(f"Requested render out of bounds of available imaging")
+            raise ValueError(f"Requested render at {x,y,alt} out of bounds of available imaging: min {self.min_max[0:2]}, max {self.min_max[2:4]}")
         else:
             print(f"Rendered {tile.shape} image at {x,y,alt} meters from {count} images in {self.folder_path}")
         return tile
@@ -243,6 +247,6 @@ class LunarRender:
 
 
 # Example usage:
-# moon = LunarRender('WAC_ROI', fov=45)
-# tile = moon.render_m(x=-50000, y=30000, alt=80000)
-# moon.tile2jpg(tile, 'lunar_images/tile_m3.jpg')
+moon = LunarRender('WAC_ROI', fov=45)
+tile = moon.render_m(x=-500000000, y=30000, alt=80000)
+moon.tile2jpg(tile, 'lunar_images/tile_m3.jpg')
