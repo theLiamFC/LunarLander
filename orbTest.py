@@ -3,7 +3,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 moon = LunarRender('WAC_ROI', fov=45)
-tile1 = moon.render_m(x=-5000, y=30000, alt=500000)
+tile1 = moon.render_m(x=-2000, y=50000, alt=50000)
 tile2 = moon.render_m(x=-10000, y=50000, alt=500000)
 moon.tile2jpg(tile1, 'lunar_images/tile1.jpg')
 moon.tile2jpg(tile2, 'lunar_images/tile2.jpg')

@@ -247,6 +247,6 @@ class LunarRender:
 
 
 # Example usage:
-moon = LunarRender('WAC_ROI', fov=45)
-tile = moon.render_m(x=-500000000, y=30000, alt=80000)
-moon.tile2jpg(tile, 'lunar_images/tile_m3.jpg')
+# moon = LunarRender('WAC_ROI', fov=45)
+# tile = moon.render_m(x=-50000, y=30000, alt=80000)
+# moon.tile2jpg(tile, 'lunar_images/tile_m3.jpg')
