@@ -31,7 +31,7 @@ Download the required WAC ROI images (see [Image Downloads](#image-downloads)).
 - wget (for data download)
 
 ## Image Downloads
-Images are sourced from the [LROC PDS archive](https://pds.lroc.asu.edu/data/). We use the Wide Angle Camera (WAC) Region of Interest (ROI) Nearside Dawn collection.
+Images are sourced from the [LROC archive](https://lroc.im-ldi.com/data/). We use the Wide Angle Camera (WAC) Region of Interest (ROI) Nearside Dawn collection.
 
 1. Ensure `wget` is installed:  
 ```shell
