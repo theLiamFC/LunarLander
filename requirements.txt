@@ -1,0 +1,6 @@
+numpy
+rasterio
+affine
+Pillow
+opencv-python
+inference-sdk
