@@ -222,15 +222,21 @@ class LunarRender:
         
         return Tile(image=render, x=x, y=y, win=2*half)
     
-    def tile2gray(self, tile):
+    def tile2image(self, tile):
+        """
+        Function to return the tile as an image for processing downstream with inference
+        
+        
+        """
+        
         minv, maxv = tile.image.min(), tile.image.max()
         if maxv > minv:
             norm = (tile.image - minv) / (maxv - minv)
         else:
             norm = np.zeros_like(tile.image)
         tile_uint8 = (norm * 255).astype(np.uint8)
-        
-        return tile_uint8
+        img_tile = np.repeat(tile_uint8[:, :, np.newaxis], 3, axis=2)
+        return img_tile
     
     def tile2jpg(self, tile, filename):
         """
@@ -295,7 +301,7 @@ class LunarRender:
 # Example usage:
 moon = LunarRender('WAC_ROI', fov=45)
 tile = moon.render_m(x=-2000, y=-50000, alt=50000)
-tile = moon.tile2gray(tile)
+# tile = moon.tile2image(tile)
 
 
 # moon.tile2jpg(tile, 'lunar_images/tile.jpg')

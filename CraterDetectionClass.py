@@ -4,21 +4,19 @@ from inference_sdk import InferenceHTTPClient
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from LunarRender import tile #only used for example usage
+from LunarRender import moon, tile #only used for example usage
 
 
 
 
 class CraterDetector:
-    def __init__(self, tile):
+    def __init__(self):
         """
         Initiates the CraterDetector class.
 
         Parameters
         ----------
-        tile: Tile from LunarRender Class File. The object contains an image, information about it's global and window size in m
         """
-        self.tile = tile
         self.__result = None
         self.__predictions = None
         
@@ -26,22 +24,18 @@ class CraterDetector:
             api_url="https://serverless.roboflow.com",
             api_key="pNM8U9MqbgHzwRvULjL2"
         )
-        print('Initialized')
     
-    def __infer__(self):
+    def __infer__(self, img):
         """
         Runs the model on the image to detect craters. 
         
         The infer method returns a JSON dictionary with one key, 'predictions', which contains a list of dictionaries.
         Each dictionary contains information about the detected object. 
         """
-        print('Infered')
-        self.__result = self.CLIENT.infer(self.tile.image, model_id="moon-challenge/1")
-        print(self.__result)
+        self.__result = self.CLIENT.infer(img, model_id="moon-challenge/1")
         self.__result = self.__result['predictions']
-        print('Exiting Infer')
         
-    def __prepare_results__(self):
+    def __prepare_results__(self, img):
         """
         Prepares the results after the infer method has been called. The JSON dictionary will be transformed into a numpy array where 
         each row is a unique detection. THE NUMPY ARRAY THAT STORES THE INFORMATION FOR THE PREDICTIONS CONTAINS THE FOLLOWING INFORMATION MATCHING THE JSON:
@@ -51,7 +45,7 @@ class CraterDetector:
         - height: height of the bounding box
         - confidence: confidence of the detection
         """
-        self.__infer__() #run inference on the image
+        self.__infer__(img) #run inference on the image
         rows = len(self.__result)
         predictions = np.zeros((rows, 5))
         
@@ -64,28 +58,24 @@ class CraterDetector:
             predictions[i,:] = np.array([x,y,w,h,conf])
         
         self.__predictions = predictions
-        print('prepare')
     
-    def detect_craters(self):
+    def detect_craters(self, img):
         """
         Getter Method: this method is how a user will be able to access the crater predictions.
         """
-        print('Detect Crater Method')
-        if self.__predictions is not None:
-            return self.__predictions
-        else:
-            self.__prepare_results__()
-            return self.__predictions
+        self.__prepare_results__(img)
+        return self.__predictions
         
-    def view_craters(self):
+    def view_craters(self, img):
         """
         Getter Method: enables users to visualize the craters that were detected
         """
-        predictions = self.detect_craters()
-        img = self.tile.image
+        
+        predictions = self.detect_craters(img)
+        print('working with predictions')
         for prediction in predictions:
-            x,y,width,height = predictions[:4]
-            conf = predictions[5]
+            x,y,width,height = prediction[:4]
+            conf = prediction[4]
             
             # Convert to top-left corner format
             x1 = int(x - width / 2)
@@ -107,7 +97,7 @@ class CraterDetector:
         plt.title("Object Detection Result")
         plt.show()
     
-    def estimate_crater_radius(self):
+    def estimate_crater_radius(self, img):
         """
         Performs a simple average of the width and the height to get the crater diameter. 
         Then returns the radius with the formula r = d/2
@@ -115,9 +105,14 @@ class CraterDetector:
         Returns:
             estimated radius of each crater
         """
-        predictions = self.detect_craters()
+        predictions = self.detect_craters(img)
         diameter = (predictions[:,2] + predictions[:,3]) / 2
         return diameter/2
     
 #example usage
-print(CraterDetector(tile).estimate_crater_radius())
+img = moon.tile2image(tile)
+print(img)
+# img = tile
+# img = moon.tile2image(tile)
+# print(img)
+print(CraterDetector().view_craters(img))
