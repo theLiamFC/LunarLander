@@ -304,11 +304,3 @@ tile = moon.render_m(x=-2000, y=-50000, alt=50000)
 # tile = moon.tile2image(tile)
 
 
-# moon.tile2jpg(tile, 'lunar_images/tile.jpg')
-# gx,gy = moon.locateCrater(tile,0,0)
-
-# plt.figure(figsize=(10, 10))
-# plt.imshow(tile.image)
-# plt.axis('off')
-# plt.title("Object Detection Result")
-# plt.show()
