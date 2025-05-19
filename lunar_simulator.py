@@ -35,39 +35,44 @@ class LunarSimulator:
         # initiate crater detection class
         # initiate relative velocity class
 
-    def control(self, state):
+    def simulate(self, state0, num_steps, seed=273, noisy=True):
+        # simulate full run
         pass
 
-    def noiseless_dynamics_step(self, state, input):
+    def plot(self):
+        # plot run
         pass
 
-    def noisy_dynamics_step(self, state, input):
+    def _control(self, state):
         pass
 
-    def noiseless_measurement_step(self, state):
+    def _noiseless_dynamics_step(self, state, input):
+        pass
+
+    def _noisy_dynamics_step(self, state, input):
+        pass
+
+    def _noiseless_measurement_step(self, state):
         # return concatenated private get functions
         pass
 
-    def noisy_measurement_step(self, state):
+    def _noisy_measurement_step(self, state):
         # return noiseless measurement + noise
         pass
 
-    def simulate(self, state0, num_steps, seed=273, noisy=True):
-        pass
-
-    def __get_imu__(self):
+    def _get_imu(self):
         # simulate imu from current state
         pass
 
-    def __get_radar__(self):
+    def _get_radar(self):
         # simulate radar from current state
         pass
 
-    def __get_rel_vel__(self):
+    def _get_rel_vel(self):
         # call relative velocity function on last two images
         pass
 
-    def __get_glob_pos__(self):
+    def _get_glob_pos(self):
         # call crater detection function on last image
         # return global position function on crater locations
         pass
