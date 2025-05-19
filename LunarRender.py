@@ -34,7 +34,7 @@ class Tile(NamedTuple):
     win: int # window size in m
 
 class LunarRender:
-    def __init__(self, folder_path, fov=60, px=512):
+    def __init__(self, folder_path, fov=60, size=512):
         """
         Initiates the LunarRender class.
 
@@ -50,10 +50,10 @@ class LunarRender:
             The height of the output image in pixels.
         """
         self.folder_path = folder_path
-        self.px = px # image output size (pixels)
-        self.fov = np.radians(fov) # degrees
+        self.size = size
+        self.fov = np.radians(fov)
         self.images = {}
-        self.min_max = [0,0,0,0] # x,y,x,y
+        self.min_max = [0,0,0,0]
 
         i=0
         for fname in os.listdir(self.folder_path):
@@ -99,7 +99,7 @@ class LunarRender:
         This method projects a square camera footprint of size determined by `alt` and the
         field‐of‐view (`self.fov`) onto the ground, finds all images in `self.images` that
         overlap that footprint, reads and resamples those overlapped regions, and stitches
-        them into a single `self.px` × `self.px` numpy array.
+        them into a single `self.size` × `self.size` numpy array.
 
         Parameters
         ----------
@@ -114,7 +114,7 @@ class LunarRender:
         Returns
         -------
         numpy.ndarray
-            A 2D float32 array of shape `(self.px, self.px)` containing the stitched image.
+            A 2D float32 array of shape `(self.size, self.size)` containing the stitched image.
 
         Raises
         ------
@@ -136,7 +136,7 @@ class LunarRender:
         This method projects a square camera footprint of size determined by `alt` and the
         field‐of‐view (`self.fov`) onto the ground, finds all images in `self.images` that
         overlap that footprint, reads and resamples those overlapped regions, and stitches
-        them into a single `self.px` × `self.px` numpy array.
+        them into a single `self.size` × `self.size` numpy array.
 
         Parameters
         ----------
@@ -151,14 +151,14 @@ class LunarRender:
         Returns
         -------
         numpy.ndarray
-            A 2D float32 array of shape `(self.px, self.px)` containing the stitched image.
+            A 2D float32 array of shape `(self.size, self.size)` containing the stitched image.
 
         Raises
         ------
         ValueError
             If any part of the requested view lies outside the spatial extent of all provided images.
         """
-        render = np.full((self.px, self.px), np.nan, dtype=np.float32) # blank image
+        render = np.full((self.size, self.size), np.nan, dtype=np.float32) # blank image
 
         half = alt * np.tan(self.fov / 2.0) # calculate fov coverage in meter
         minx, maxx = x - half, x + half # global coverage in x
@@ -188,8 +188,8 @@ class LunarRender:
             # get final pixel dimensions of this fragment
             frac_w = (win.width  * src.res[0]) / (2 * half)
             frac_h = (win.height * src.res[1]) / (2 * half)
-            out_w  = int(np.ceil(frac_w * self.px)) # round to extra pixel
-            out_h  = int(np.ceil(frac_h * self.px)) # round to extra pixel
+            out_w  = int(np.ceil(frac_w * self.size)) # round to extra pixel
+            out_h  = int(np.ceil(frac_h * self.size)) # round to extra pixel
 
             # get fragment from base image
             fragment = src.read(
@@ -201,14 +201,14 @@ class LunarRender:
 
             # locate fragment in the tile
             tlx, tly = transform(win, meta['transform']) * (0, 0)
-            col_off = int(((tlx - minx) / (2 * half)) * self.px)
-            row_off = int(((maxy - tly) / (2 * half)) * self.px)
+            col_off = int(((tlx - minx) / (2 * half)) * self.size)
+            row_off = int(((maxy - tly) / (2 * half)) * self.size)
 
             # clip fragment size to fit in tile
-            if col_off + out_w > self.px:
-                out_w = self.px - col_off
-            if row_off + out_h > self.px:
-                out_h = self.px - row_off
+            if col_off + out_w > self.size:
+                out_w = self.size - col_off
+            if row_off + out_h > self.size:
+                out_h = self.size - row_off
 
             render[ # insert fragment into tile
                 row_off : row_off + out_h,
@@ -252,6 +252,24 @@ class LunarRender:
         img.save(filename, format='JPEG', quality=90)
 
     def locateCrater(self, tile, px, py):
+        """
+        Translates pixel coordinates within a given tile to global coordinates
+        in meters. Assumes image axes aligned with the origin in the top left.
+
+        Parameters
+        ----------
+        tile : Tile class
+            A custom class containing an 2d np array, centering x,y (m), and window size (m).
+        px : float
+            The pixel coordinates in x axis.
+        py : float
+            The pixel coordinates in y axis.
+        
+        Returns
+        ----------
+        gx, gy : float
+            The global coordinates in meters.
+        """
         # Calculate fractional offset from center
         x_offset_f = (px / (tile.image.shape[0]-1)) - 0.5
         y_offset_f = 0.5 - (py / (tile.image.shape[1]-1))
@@ -267,4 +285,4 @@ class LunarRender:
 # moon = LunarRender('WAC_ROI', fov=45)
 # tile = moon.render_m(x=-50000, y=30000, alt=80000)
 # moon.tile2jpg(tile, 'lunar_images/tile.jpg')
-# gx,gy = moon.locateCrater(tile,200,30)
+# gx,gy = moon.locateCrater(tile,0,0)
