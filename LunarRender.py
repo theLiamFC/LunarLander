@@ -24,7 +24,7 @@ from affine import Affine
 from rasterio.windows import Window, intersection, from_bounds, transform
 from rasterio.enums import Resampling
 from PIL import Image
-
+import matplotlib.pyplot as plt
 MOON_RADIUS_M = 1_737_400 # radius of moon in meters
 
 class Tile(NamedTuple):
@@ -222,6 +222,16 @@ class LunarRender:
         
         return Tile(image=render, x=x, y=y, win=2*half)
     
+    def tile2gray(self, tile):
+        minv, maxv = tile.image.min(), tile.image.max()
+        if maxv > minv:
+            norm = (tile.image - minv) / (maxv - minv)
+        else:
+            norm = np.zeros_like(tile.image)
+        tile_uint8 = (norm * 255).astype(np.uint8)
+        
+        return tile_uint8
+    
     def tile2jpg(self, tile, filename):
         """
         Converts a 2D numpy array of image data into a JPEG file,
@@ -234,14 +244,15 @@ class LunarRender:
         filename : string
             The desired path and name of the output JPEG file.
         """
-        # Normalize tile values to 0–255
+        
         minv, maxv = tile.image.min(), tile.image.max()
         if maxv > minv:
             norm = (tile.image - minv) / (maxv - minv)
         else:
             norm = np.zeros_like(tile.image)
         tile_uint8 = (norm * 255).astype(np.uint8)
-
+        return tile_uint8
+    
         # Ensure output directory exists
         out_dir = os.path.dirname(filename)
         if out_dir and not os.path.exists(out_dir):
@@ -283,6 +294,15 @@ class LunarRender:
 
 # Example usage:
 moon = LunarRender('WAC_ROI', fov=45)
-tile = moon.render_m(x=-0, y=0, alt=50000)
-moon.tile2jpg(tile, 'lunar_images/tile.jpg')
-gx,gy = moon.locateCrater(tile,0,0)
+tile = moon.render_m(x=-2000, y=-50000, alt=50000)
+tile = moon.tile2gray(tile)
+
+
+# moon.tile2jpg(tile, 'lunar_images/tile.jpg')
+# gx,gy = moon.locateCrater(tile,0,0)
+
+# plt.figure(figsize=(10, 10))
+# plt.imshow(tile.image)
+# plt.axis('off')
+# plt.title("Object Detection Result")
+# plt.show()
