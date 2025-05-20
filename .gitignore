@@ -1,3 +1,6 @@
+# API keys
+api_secrets.py
+
 # LROC image folders
 WAC_ROI/
 WAC_ROI_NORTH_SUMMER/

@@ -4,10 +4,7 @@ from inference_sdk import InferenceHTTPClient
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from LunarRender import moon, tile #only used for example usage
-
-
-
+from api_secrets import RF_API_KEY
 
 class CraterDetector:
     def __init__(self):
@@ -22,7 +19,7 @@ class CraterDetector:
         
         self.CLIENT = InferenceHTTPClient(
             api_url="https://serverless.roboflow.com",
-            api_key="pNM8U9MqbgHzwRvULjL2"
+            api_key=RF_API_KEY
         )
     
     def __infer__(self, img):
@@ -59,19 +56,19 @@ class CraterDetector:
         
         self.__predictions = predictions
     
-    def detect_craters(self, img):
+    def detect_craters(self, tile):
         """
         Getter Method: this method is how a user will be able to access the crater predictions.
         """
-        self.__prepare_results__(img)
+        self.__prepare_results__(np.repeat(tile.image[:, :, np.newaxis], 3, axis=2))
         return self.__predictions
         
-    def view_craters(self, img):
+    def view_craters(self, tile):
         """
         Getter Method: enables users to visualize the craters that were detected
         """
-        
-        predictions = self.detect_craters(img)
+        rgb_image = cv2.cvtColor(tile.image, cv2.COLOR_BGR2RGB)
+        predictions = self.detect_craters(tile)
         print('working with predictions')
         for prediction in predictions:
             x,y,width,height = prediction[:4]
@@ -85,14 +82,14 @@ class CraterDetector:
         
         
             # Draw rectangle and label
-            cv2.rectangle(img, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
-            cv2.putText(img, f"Crater with Conf = {conf:.2f}", (x1, y1 - 10),
+            cv2.rectangle(rgb_image, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
+            cv2.putText(rgb_image, f"Crater with Conf = {conf:.2f}", (x1, y1 - 10),
                         fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=2)
         
 
         # Show result
         plt.figure(figsize=(10, 10))
-        plt.imshow(img)
+        plt.imshow(rgb_image)
         plt.axis('off')
         plt.title("Object Detection Result")
         plt.show()
@@ -109,10 +106,6 @@ class CraterDetector:
         diameter = (predictions[:,2] + predictions[:,3]) / 2
         return diameter/2
     
-#example usage
-img = moon.tile2image(tile)
-print(img)
-# img = tile
-# img = moon.tile2image(tile)
-# print(img)
-print(CraterDetector().view_craters(img))
+# example usage
+# detector = CraterDetector()
+# CraterDetector().view_craters(tile)
