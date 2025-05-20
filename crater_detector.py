@@ -4,6 +4,7 @@ from inference_sdk import InferenceHTTPClient
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+from api_secrets import RF_API_KEY
 
 class CraterDetector:
     def __init__(self):
@@ -18,7 +19,7 @@ class CraterDetector:
         
         self.CLIENT = InferenceHTTPClient(
             api_url="https://serverless.roboflow.com",
-            api_key="pNM8U9MqbgHzwRvULjL2"
+            api_key=RF_API_KEY
         )
     
     def __infer__(self, img):
@@ -66,7 +67,7 @@ class CraterDetector:
         """
         Getter Method: enables users to visualize the craters that were detected
         """
-        
+        rgb_image = cv2.cvtColor(tile.image, cv2.COLOR_BGR2RGB)
         predictions = self.detect_craters(tile)
         print('working with predictions')
         for prediction in predictions:
@@ -81,14 +82,14 @@ class CraterDetector:
         
         
             # Draw rectangle and label
-            cv2.rectangle(tile.image, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
-            cv2.putText(tile.image, f"Crater with Conf = {conf:.2f}", (x1, y1 - 10),
+            cv2.rectangle(rgb_image, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
+            cv2.putText(rgb_image, f"Crater with Conf = {conf:.2f}", (x1, y1 - 10),
                         fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 0, 0), thickness=2)
         
 
         # Show result
         plt.figure(figsize=(10, 10))
-        plt.imshow(tile.image)
+        plt.imshow(rgb_image)
         plt.axis('off')
         plt.title("Object Detection Result")
         plt.show()
