@@ -20,9 +20,10 @@ class LunarSimulator:
 
         self.target = target
 
-        self.true_state = np.zeros((true_state0.shape[0], self.num_steps))
+        self.state_dim = true_state0.shape[0]
+        self.true_state = np.zeros((self.state_dim, self.num_steps))
         self.true_state[:, 0] = true_state0
-        self.mu_state = np.zeros((mu_state0.shape[0], self.num_steps))
+        self.mu_state = np.zeros((self.state_dim, self.num_steps))
         self.mu_state[:, 0] = mu_state0
         self.cov = np.zeros((cov0.shape[0], cov0.shape[1], self.num_steps))
         self.cov[:, :, 0] = cov0
@@ -33,7 +34,8 @@ class LunarSimulator:
         self.lunar_render = LunarRender('WAC_ROI', fov=fov)
         self.tiles = np.empty((2,1), dtype=object) # [time, Tile]
 
-        # initiate crater detection class
+        self.crater_detector = CraterDetector()
+        
         # initiate relative velocity class
 
     def simulate(self, state0, num_steps, seed=273, noisy=True):
@@ -51,15 +53,14 @@ class LunarSimulator:
         pass
 
     def _noisy_dynamics_step(self, state, input):
-        pass
+        return self._noiseless_dynamics_step(state,input) + np.random.multivariate_normal(np.zeros(self.q_mat.shape[0]),self.q_mat)
 
     def _noiseless_measurement_step(self, state):
         # return concatenated private get functions
         pass
 
     def _noisy_measurement_step(self, state):
-        # return noiseless measurement + noise
-        pass
+        return self._noiseless_measurement_step(state) + np.random.multivariate_normal(np.zeros(self.r_mat.shape[0]),self.r_mat)
 
     def _get_imu(self):
         # simulate imu from current state
