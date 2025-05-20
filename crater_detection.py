@@ -4,7 +4,7 @@
 from inference_sdk import InferenceHTTPClient
 import cv2
 import matplotlib.pyplot as plt
-from LunarRender import tile #only used for example usage
+from lunar_render import tile #only used for example usage
 import base64
 import numpy as np
 

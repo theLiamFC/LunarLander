@@ -1,5 +1,6 @@
 import numpy as np
-from LunarRender import LunarRender
+from lunar_render import LunarRender
+from crater_detector import CraterDetector
 
 class LunarSimulator:
     def __init__(

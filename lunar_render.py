@@ -15,7 +15,6 @@ advanced manipulation to correct for camera properties. Rendered images will
 likely get more distorted further from the equator.
 """
 
-
 import os
 from typing import NamedTuple
 import numpy as np
@@ -24,7 +23,7 @@ from affine import Affine
 from rasterio.windows import Window, intersection, from_bounds, transform
 from rasterio.enums import Resampling
 from PIL import Image
-import matplotlib.pyplot as plt
+
 MOON_RADIUS_M = 1_737_400 # radius of moon in meters
 
 class Tile(NamedTuple):
@@ -219,24 +218,16 @@ class LunarRender:
             raise ValueError(f"Requested render at {x,y,alt} out of bounds of available imaging: min {self.min_max[0:2]}, max {self.min_max[2:4]}")
         else:
             print(f"Rendered {render.shape} image at {x,y,alt} meters from {count} images in {self.folder_path}")
+            
+            # normalize values to 0-255
+            minv, maxv = render.min(), render.max()
+            if maxv > minv:
+                norm = (render - minv) / (maxv - minv)
+            else:
+                norm = np.zeros_like(render)
+            tile_uint8 = (norm * 255).astype(np.uint8)
         
-        return Tile(image=render, x=x, y=y, win=2*half)
-    
-    def tile2image(self, tile):
-        """
-        Function to return the tile as an image for processing downstream with inference
-        
-        
-        """
-        
-        minv, maxv = tile.image.min(), tile.image.max()
-        if maxv > minv:
-            norm = (tile.image - minv) / (maxv - minv)
-        else:
-            norm = np.zeros_like(tile.image)
-        tile_uint8 = (norm * 255).astype(np.uint8)
-        img_tile = np.repeat(tile_uint8[:, :, np.newaxis], 3, axis=2)
-        return img_tile
+        return Tile(image=tile_uint8, x=x, y=y, win=2*half)
     
     def tile2jpg(self, tile, filename):
         """
@@ -250,14 +241,6 @@ class LunarRender:
         filename : string
             The desired path and name of the output JPEG file.
         """
-        
-        minv, maxv = tile.image.min(), tile.image.max()
-        if maxv > minv:
-            norm = (tile.image - minv) / (maxv - minv)
-        else:
-            norm = np.zeros_like(tile.image)
-        tile_uint8 = (norm * 255).astype(np.uint8)
-        return tile_uint8
     
         # Ensure output directory exists
         out_dir = os.path.dirname(filename)
@@ -265,7 +248,7 @@ class LunarRender:
             os.makedirs(out_dir, exist_ok=True)
 
         # Save as JPEG
-        img = Image.fromarray(tile_uint8, mode='L')
+        img = Image.fromarray(tile.image, mode='L')
         img.save(filename, format='JPEG', quality=90)
 
     def locateCrater(self, tile, px, py):
@@ -299,8 +282,8 @@ class LunarRender:
 
 
 # Example usage:
-moon = LunarRender('WAC_ROI', fov=45)
-tile = moon.render_m(x=-2000, y=-50000, alt=50000)
-# tile = moon.tile2image(tile)
+# moon = LunarRender('WAC_ROI', fov=45)
+# tile = moon.render_m(x=-2000, y=-50000, alt=50000)
+# moon.tile2jpg(tile, "lunar_images/tile.jpg")
 
 

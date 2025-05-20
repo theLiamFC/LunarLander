@@ -1,4 +1,4 @@
-from LunarRender import LunarRender
+from lunar_render import LunarRender
 import cv2
 import matplotlib.pyplot as plt
 
