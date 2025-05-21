@@ -1,6 +1,7 @@
 import numpy as np
 from lunar_render import LunarRender
 from crater_detector import CraterDetector
+from visual_odometry import VisualOdometry
 
 class LunarSimulator:
     def __init__(
@@ -11,7 +12,7 @@ class LunarSimulator:
         cov0,  # initial covariance of lander state
         q_mat,  # process noise covariance matrix
         r_mat,  # measurement noise covariance matrix
-        runtime,  # duration of simulation (s)
+        runtime=100,  # duration of simulation (s)
         dt=0.1,  # delta time for simulation (s)
         LROC_folder="WAC_ROI", # local folder containing LROC images
         fov=45 # simulated fov of camera in degrees
@@ -35,11 +36,9 @@ class LunarSimulator:
         self.tiles = np.empty((2,1), dtype=object) # [time, Tile]
 
         self.crater_detector = CraterDetector()
-        
-        # initiate relative velocity class
+        self.visual_odometer = VisualOdometry()
 
-    def simulate(self, state0, num_steps, seed=273, noisy=True):
-        # simulate full run
+    def simulate(self, state0, seed=273, noisy=True):
         pass
 
     def plot(self):
@@ -70,11 +69,13 @@ class LunarSimulator:
         # simulate radar from current state
         pass
 
-    def _get_rel_vel(self):
-        # call relative velocity function on last two images
-        pass
+    def _get_rel_vel(self, last_tile, curr_tile):
+        return self.visual_odometer.get_odometry(last_tile, curr_tile)
 
     def _get_glob_pos(self):
         # call crater detection function on last image
         # return global position function on crater locations
+        pass
+
+    def _ekf_step(self):
         pass

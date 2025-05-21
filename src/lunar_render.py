@@ -31,6 +31,7 @@ class Tile(NamedTuple):
     x: int # global x at center of image
     y: int # global y at center of image
     win: int # window size in m
+    time: float # simulation time of render
 
 class LunarRender:
     def __init__(self, folder_path, fov=60, size=512):
@@ -91,7 +92,7 @@ class LunarRender:
             except Exception:
                 pass
 
-    def render_d(self, lon, lat, alt):
+    def render_d(self, lon, lat, alt, time=0.0):
         """
         Render a composite view centered at (lon, lat) from a given altitude (m).
 
@@ -126,9 +127,9 @@ class LunarRender:
         x = MOON_RADIUS_M * lon_rad * np.cos(lat_rad)
         y = MOON_RADIUS_M * lat_rad
 
-        return self.render(x, y, alt)
+        return self.render(x, y, alt, time)
 
-    def render_m(self, x, y, alt):
+    def render_m(self, x, y, alt, time=0.0):
         """
         Render a composite view centered at (x, y) from a given altitude.
 
@@ -227,7 +228,7 @@ class LunarRender:
                 norm = np.zeros_like(render)
             tile_uint8 = (norm * 255).astype(np.uint8)
         
-        return Tile(image=tile_uint8, x=x, y=y, win=2*half)
+        return Tile(image=tile_uint8, x=x, y=y, win=2*half, time=time)
     
     def tile2jpg(self, tile, filename):
         """
