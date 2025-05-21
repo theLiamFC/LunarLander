@@ -1,6 +1,6 @@
 from lunar_simulator import LunarSimulator
 
-if __name__ == "Main.py":
+if __name__ == "__main__":
     lunar_sim = LunarSimulator(
         target,  # target landing site [x,y,z,vx=0,vy=0,vz=0] (m)
         true_state0,  # true initial state of lander [x,y,z,vx,vy,vz] (m)

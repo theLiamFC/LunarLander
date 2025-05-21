@@ -2,6 +2,7 @@ import numpy as np
 from lunar_render import LunarRender
 from crater_detector import CraterDetector
 from visual_odometry import VisualOdometry
+from imu_simulator import IMUSimulator
 
 class LunarSimulator:
     def __init__(
@@ -38,6 +39,8 @@ class LunarSimulator:
         self.crater_detector = CraterDetector()
         self.visual_odometer = VisualOdometry()
 
+        self.imu_simulator = IMUSimulator()
+
     def simulate(self, state0, seed=273, noisy=True):
         pass
 
@@ -61,8 +64,9 @@ class LunarSimulator:
     def _noisy_measurement_step(self, state):
         return self._noiseless_measurement_step(state) + np.random.multivariate_normal(np.zeros(self.r_mat.shape[0]),self.r_mat)
 
-    def _get_imu(self):
-        # simulate imu from current state
+    def _get_imu(self,state,control):
+        # not sure if our control is force or acceleration => might need update
+        self.imu_simulator.get_acceleration(state,control)
         pass
 
     def _get_radar(self):
