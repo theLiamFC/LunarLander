@@ -32,7 +32,7 @@ class LunarSimulator:
         self.q_mat = q_mat
         self.r_mat = r_mat
 
-        self.lunar_render = LunarRender('WAC_ROI', fov=fov)
+        self.lunar_render = LunarRender(LROC_folder, fov=fov)
         self.tiles = np.empty((2,1), dtype=object) # [time, Tile]
 
         self.crater_detector = CraterDetector()
