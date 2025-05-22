@@ -284,7 +284,7 @@ class LunarRender:
 
 # Example usage:
 if __name__ == "__main__":
-    moon = LunarRender('WAC_ROI', fov=45)
+    moon = LunarRender('../WAC_ROI', fov=45)
     tile = moon.render_m(x=-2000, y=-50000, alt=50000)
     moon.tile2jpg(tile, "lunar_images/tile.jpg")
 
