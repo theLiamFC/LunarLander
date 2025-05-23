@@ -16,7 +16,7 @@ NOTES:
 class Camera():
     def __init__(self, K):
         self.orb = cv2.ORB_create()
-        self.K = K #K represents the camera intrinsic matrix --> this needs to be input
+        self.K = K #K represents the camera intrinsic matrix --> this needs to be input --> input as a 3x3
 
     def get_matches(self,img1,img2, num_matches = 20, plot=False): #currently using ORB but can switch to SIFT (might be worth testing)
         #https://docs.opencv.org/3.4/dc/dc3/tutorial_py_matcher.html
@@ -75,7 +75,7 @@ class Camera():
     
     #methods used in Robot Autonomy
     
-    def recover_pose(self, points, global_positions):
+    #def recover_pose(self, points, global_positions):
         """recover_pose: a number of points are needed: Both 3D corresponding points and 2D image points are needed and must be in the correct order
         
         AS IMPLEMENTED, THIS FUNCTION ASSUMES POINTS1, POINTS2, AND GLOBAL_POSITIONS ARE IN THE SAME ORDER
@@ -117,8 +117,26 @@ class Camera():
         R = np.vstack((r0.T, r1.T, r2.T))
         t = 1/scale (Kinv@H)[:,2].reshape(-1,1)
         return R, t 
-    
-    
+
+    def get_position_global(self, imgpt, globalpt):    
+        u,v = imgpt.flatten()
+        x,y,z = globalpt.flatten() 
+        
+        b = np.array([[u*z + u - x], 
+                      [v*z + v - y],
+                      [u*y - v*x]])
+        
+        alpha = self.K[0,0]
+        beta = self.K[1,1]
+        cx = self.K[0,2]
+        cy = self.K[1,2]
+        A = self.K
+        A[2,:] = np.array([v*alpha, -u*beta, (v*cx - u*cy)])
+        t = np.linalg.lstsq(A,b)[0].reshape(3,1)
+        return t #returns t as a 3x1 [tx, ty, tz]
+        
+        
+        
     # def recover_pose_no_rotation(self, points, global_points):
         
         
