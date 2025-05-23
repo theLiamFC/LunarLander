@@ -1,7 +1,7 @@
 import numpy as np
 from lunar_render import LunarRender
 from crater_detector import CraterDetector
-from visual_odometry import VisualOdometry
+from src.camera import VisualOdometry
 from imu_simulator import IMUSimulator
 
 class LunarSimulator:

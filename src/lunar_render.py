@@ -160,9 +160,15 @@ class LunarRender:
         """
         render = np.full((self.size, self.size), np.nan, dtype=np.float32) # blank image
 
-        half = alt * np.tan(self.fov / 2.0) # calculate fov coverage in meter
-        minx, maxx = x - half, x + half # global coverage in x
-        miny, maxy = y - half, y + half # global coverage in y
+
+        v_half = alt * np.tan(self.fov / 2.0) # calculate fov coverage in meter
+
+        lat, lon = xy_to_latlon(x,y)
+        cos_lat = np.cos(np.radians(lat))
+        h_half = v_half / cos_lat
+
+        minx, maxx = x - h_half, x + h_half # global coverage in x
+        miny, maxy = y - v_half, y + v_half # global coverage in y
 
         count = 0
         for meta in self.images.values(): # loop through all base images
@@ -186,8 +192,8 @@ class LunarRender:
             win = intersection(win, Window(0, 0, src.width, src.height))
             
             # get final pixel dimensions of this fragment
-            frac_w = (win.width  * src.res[0]) / (2 * half)
-            frac_h = (win.height * src.res[1]) / (2 * half)
+            frac_w = (win.width  * src.res[0]) / (2 * h_half)
+            frac_h = (win.height * src.res[1]) / (2 * v_half)
             out_w  = int(np.ceil(frac_w * self.size)) # round to extra pixel
             out_h  = int(np.ceil(frac_h * self.size)) # round to extra pixel
 
@@ -201,8 +207,8 @@ class LunarRender:
 
             # locate fragment in the tile
             tlx, tly = transform(win, meta['transform']) * (0, 0)
-            col_off = int(((tlx - minx) / (2 * half)) * self.size)
-            row_off = int(((maxy - tly) / (2 * half)) * self.size)
+            col_off = int(((tlx - minx) / (2 * h_half)) * self.size)
+            row_off = int(((maxy - tly) / (2 * v_half)) * self.size)
 
             # clip fragment size to fit in tile
             if col_off + out_w > self.size:
@@ -228,7 +234,7 @@ class LunarRender:
                 norm = np.zeros_like(render)
             tile_uint8 = (norm * 255).astype(np.uint8)
         
-        return Tile(image=tile_uint8, x=x, y=y, win=2*half, time=time)
+        return Tile(image=tile_uint8, x=x, y=y, win=2*v_half, time=time)
     
     def tile2jpg(self, tile, filename):
         """
@@ -280,12 +286,61 @@ class LunarRender:
         gy = tile.y + y_offset_f * tile.win
 
         return gx,gy
+    
+def latlon_to_xy(lat, lon):
+    """
+    Convert latitude/longitude to x/y coordinates in meters.
+    
+    Parameters
+    ----------
+    lat : float
+        Latitude in degrees
+    lon : float
+        Longitude in degrees
+        
+    Returns
+    -------
+    tuple
+        (x, y) coordinates in meters
+    """
+    lat_rad = np.radians(lat)
+    lon_rad = np.radians(lon)
+    
+    x = MOON_RADIUS_M * lon_rad * np.cos(lat_rad)
+    y = MOON_RADIUS_M * lat_rad
+    
+    return x, y
+
+def xy_to_latlon(x, y):
+    """
+    Convert x/y coordinates in meters to latitude/longitude.
+    
+    Parameters
+    ----------
+    x : float
+        X coordinate in meters
+    y : float
+        Y coordinate in meters
+        
+    Returns
+    -------
+    tuple
+        (lat, lon) in degrees
+    """
+    lat_rad = y / MOON_RADIUS_M
+    lon_rad = x / (MOON_RADIUS_M * np.cos(lat_rad))
+    
+    lat = np.degrees(lat_rad)
+    lon = np.degrees(lon_rad)
+    
+    return lat, lon
+
 
 
 # Example usage:
 if __name__ == "__main__":
-    moon = LunarRender('WAC_ROI', fov=45)
-    tile = moon.render_m(x=-2000, y=-50000, alt=50000)
+    moon = LunarRender('src/WAC_ROI', fov=45)
+    tile = moon.render_m(x=-90000, y=1700000.0, alt=80000)
     moon.tile2jpg(tile, "lunar_images/tile.jpg")
 
 

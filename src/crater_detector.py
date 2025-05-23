@@ -106,11 +106,33 @@ class CraterDetector:
         diameter = (predictions[:,2] + predictions[:,3]) / 2
         return diameter/2
     
+    def gather_image_points(self, img):
+        """
+        Gathers points on the crater in the image that will be used to estimate.
+        Args:
+            img (_type_): _description_
+        """
+        predictions = self.detect_craters(img)
+        r = self.estimate_crater_radius(img)
+        
+        m = predictions.shape[0]
+        n = 5 #first point will be original center followed by top, right, bottom, left points
+        add_points = np.zeros((n, 2*m))
+        
+        original_points = predictions[:,:2].reshape(1,-1) #gather all the x,y positions 
+        
+            
+            
+        
+        
+        
+    
 # example usage
 if __name__ == "__main__":
     from lunar_render import LunarRender
-    moon = LunarRender('WAC_ROI', fov=45)
+    moon = LunarRender('../WAC_ROI', fov=45)
     tile = moon.render_m(x=-2000, y=-50000, alt=50000)
     
     detector = CraterDetector()
-    CraterDetector().view_craters(tile)
+    detector.view_craters(tile)
+    print(detector.estimate_crater_radius(tile))
