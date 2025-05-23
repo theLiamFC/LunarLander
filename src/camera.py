@@ -117,6 +117,10 @@ class Camera():
         R = np.vstack((r0.T, r1.T, r2.T))
         t = 1/scale (Kinv@H)[:,2].reshape(-1,1)
         return R, t 
+    
+    
+    # def recover_pose_no_rotation(self, points, global_points):
+        
         
         
         
