@@ -4,3 +4,5 @@ affine
 Pillow
 opencv-python
 inference-sdk
+matplotlib
+mpl_toolkits.mplot3d

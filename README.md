@@ -31,15 +31,13 @@ Download the required WAC ROI images (see [Image Downloads](#image-downloads)).
 - wget (for data download)
 
 ## Image Downloads
-Images are sourced from the [LROC archive](https://lroc.im-ldi.com/data/). We use the Wide Angle Camera (WAC) Region of Interest (ROI) Nearside Dawn collection at a resolution of 100 meters per pixel (100M).
+Images are sourced from the [LROC archive](https://lroc.im-ldi.com/data/). We use the Wide Angle Camera (WAC) Region of Interest (ROI) Farside Dusk collection at a resolution of 256 pixels per degree (256P).
 
 1. Ensure `wget` is installed:  
 ```shell
 brew install wget
 ```
-2. To selectively download 100M IMG files, corresponding 100M xml files, and the README from LROC - in your target folder run:
+2. To selectively download 256P IMG files, corresponding 256P xml files, and the README from LROC - in your target folder run:
 ```shell
-wget -r -l1 -np -nd
--A "DAWN_E*100M.IMG,DAWN_E*100M.XML,*README.TXT"
-"https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/BDR/WAC_ROI/WAC_ROI_NEARSIDE_DAWN/"
+wget -r -l1 -np -nd -A "DUSK_E*256P.IMG,DUSK_E*256P.XML,*README.TXT" "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/BDR/WAC_ROI/WAC_ROI_FARSIDE_DUSK/"
 ```
