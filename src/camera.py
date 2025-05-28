@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
-
+from crater_detector import CraterDetector
+from transformations import lla2mcmf, mcmf2lla
+from lunar_render import pixel_to_lat_lon
 """
 
 NOTES:
@@ -12,12 +14,25 @@ NOTES:
 
 """
 
-
 class Camera():
-    def __init__(self, K):
+    def __init__(self, K=None):
         self.orb = cv2.ORB_create()
-        self.K = K #K represents the camera intrinsic matrix --> this needs to be input
-
+        self.detector = CraterDetector()
+        
+        if K is None:
+            f = 21e-3 #23mm focal length
+            pixel_size = 24e-6
+            focal = f/pixel_size
+            self.K = np.array([[focal, 0,  -256], 
+                                [0, focal, -256], 
+                                [0, 0, 1]])
+            self.focal = focal
+        else:
+            self.K = K #K represents the camera intrinsic matrix --> this needs to be input --> input as a 3x3
+        
+    def get_K(self):
+        return self.K
+    
     def get_matches(self,img1,img2, num_matches = 20, plot=False): #currently using ORB but can switch to SIFT (might be worth testing)
         #https://docs.opencv.org/3.4/dc/dc3/tutorial_py_matcher.html
         #https://docs.opencv.org/4.x/d1/de0/tutorial_py_feature_homography.html
@@ -41,7 +56,6 @@ class Camera():
         else: #default
             return points1, points2, matches #returns them in the proper numpy format
 
-        
     #just for visualization purposes
     def plot_matches(self,img1,img2, N=20):
         kp1, kp2, matches = self.get_matches(img1,img2, num_matches=N, plot=True)
@@ -74,7 +88,6 @@ class Camera():
     
     
     #methods used in Robot Autonomy
-    
     def recover_pose(self, points, global_positions):
         """recover_pose: a number of points are needed: Both 3D corresponding points and 2D image points are needed and must be in the correct order
         
@@ -118,13 +131,61 @@ class Camera():
         t = 1/scale (Kinv@H)[:,2].reshape(-1,1)
         return R, t 
     
+    def get_scale(self, tile, lat, deg=True):
+        if deg:
+            lat = np.deg2rad(lat)
+            
+        predictions = self.detector.detect_craters(tile)
+        diameter = (predictions[0,2] / np.cos(lat) + predictions[0,3]) / 2 #need to scale radius
+        radius_image = diameter/2 
+        # radius_image = self.detector.estimate_crater_radius(tile)[0] #radius in pixels only get the first one
+        radius_real = radius_image / tile.image.shape[0] * tile.win * 100      #voodoo magic to get real radius
+        z = self.focal * radius_real / radius_image
     
-    # def recover_pose_no_rotation(self, points, global_points):
+        return z
+    
+    def get_position_global(self, tile):    
+        predictions = self.detector.detect_craters(tile)
+        
+        image_points = predictions[0,:2].flatten()
+        crater_x, crater_y = image_points
+        
+        image_points = np.append(image_points, 1).reshape(-1,1) #put in homogeneous form
+        
+        gu, gv = moon.locate_crater(tile, crater_x,crater_y)
+        global_points = np.array([gu,gv])
+        
+        lat, lon = pixel_to_lat_lon(global_points, deg=True)
+        global_points3D = lla2mcmf(lon, lat, 0)*1e3 #converting points to m space
+        global_points3D = global_points3D.reshape(-1,1)
         
         
+        scale = self.get_scale(tile, lat, deg=True)
+        print('Scale', scale)
         
+        print(f"Latitude of Crater: {lat}")
+        print(f"Longitude of Crater: {lon}")
+        t = global_points3D - scale * np.linalg.inv(self.K)@image_points
+        t = mcmf2lla(t.flatten()*1e-3)
         
+        return t #return tau as tx, ty, tz
         
+if __name__ == "__main__":
+    cam = Camera()
+    K = cam.get_K()
+    print(cam.get_K()) #returns the camera intrinsic matrix
+    
+    from lunar_render import LunarRender
+    from crater_detector import CraterDetector
+    
+    moon = LunarRender('../WAC_ROI',debug=False)
+    # tile = moon.render(u=0, v=0, alt=50000)
+    tile = moon.render_ll(lat=0,lon=-30,alt=50000,deg=True)
+    
+    detector = CraterDetector()
+    detector.view_craters(tile)
+    print(cam.get_position_global(tile))
+
         
         
         
