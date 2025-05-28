@@ -39,7 +39,5 @@ brew install wget
 ```
 2. To selectively download 256P IMG files, corresponding 256P xml files, and the README from LROC - in your target folder run:
 ```shell
-wget -r -l1 -np -nd
--A "DUSK_E*256P.IMG,DUSK_E*256P.XML,*README.TXT"
-"https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/BDR/WAC_ROI/WAC_ROI_FARSIDE_DUSK/"
+wget -r -l1 -np -nd -A "DUSK_E*256P.IMG,DUSK_E*256P.XML,*README.TXT" "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/BDR/WAC_ROI/WAC_ROI_FARSIDE_DUSK/"
 ```
