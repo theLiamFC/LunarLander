@@ -121,6 +121,9 @@ class CraterDetector:
         
         original_points = predictions[:,:2].reshape(1,-1) #gather all the x,y positions 
         
+        
+    
+        
             
             
         
@@ -130,7 +133,7 @@ class CraterDetector:
 # example usage
 if __name__ == "__main__":
     from lunar_render import LunarRender
-    moon = LunarRender('../WAC_ROI', fov=45)
+    moon = LunarRender('../WAC_ROI')
     tile = moon.render_m(x=-2000, y=-50000, alt=50000)
     
     detector = CraterDetector()
