@@ -12,11 +12,21 @@ NOTES:
 
 """
 
-
+#camera intrinsic values from https://lroc.im-ldi.com/about/specs
 class Camera():
-    def __init__(self, K):
+    def __init__(self, K=None):
         self.orb = cv2.ORB_create()
-        self.K = K #K represents the camera intrinsic matrix --> this needs to be input --> input as a 3x3
+        if K is None:
+            f = 6e-3 #6mm focal length
+            pixel_size = 9e-6
+            self.K = np.array([[f/pixel_size, 0, 512], 
+                               [0, f/pixel_size, 512], 
+                               [0, 0, 1]])
+        else:
+            self.K = K #K represents the camera intrinsic matrix --> this needs to be input --> input as a 3x3
+    
+    def get_K(self):
+        return self.K
 
     def get_matches(self,img1,img2, num_matches = 20, plot=False): #currently using ORB but can switch to SIFT (might be worth testing)
         #https://docs.opencv.org/3.4/dc/dc3/tutorial_py_matcher.html
@@ -135,7 +145,35 @@ class Camera():
         t = np.linalg.lstsq(A,b)[0].reshape(3,1)
         return t #returns t as a 3x1 [tx, ty, tz]
         
-        
+
+if __name__ == "__main__":
+    cam = Camera()
+    K = cam.get_K()
+    print(cam.get_K()) #returns the camera intrinsic matrix
+    
+    from lunar_render import LunarRender
+    from crater_detector import CraterDetector
+    
+    moon = LunarRender('../WAC_ROI', fov=45)
+    tile = moon.render_m(x=-2000, y=-50000, alt=50000)
+    
+    detector = CraterDetector()
+    predictions = detector.detect_craters(tile)
+    crater_x = predictions[0,0]
+    crater_y = predictions[0,1]
+    gx, gy = moon.locateCrater(tile, crater_x, crater_y)
+    
+    # imgpt = np.array([crater_x, crater_y])
+    # global_pt = np.array([gx, gy, 0])
+    # print(imgpt)
+    # print(global_pt)
+    # print(cam.get_position_global(imgpt, global_pt).T)
+    
+    pos = K@np.array([-11281.30193576,-52107.54454436, 1]).reshape(-1,1)
+    print(pos[:2] / pos[2])
+    print(crater_x, crater_y)
+    
+    
         
     # def recover_pose_no_rotation(self, points, global_points):
         
