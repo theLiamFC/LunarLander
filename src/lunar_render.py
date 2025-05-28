@@ -34,7 +34,7 @@ class Tile(NamedTuple):
     time: float # simulation time of render
 
 class LunarRender:
-    def __init__(self, folder_path, fov=60, size=512):
+    def __init__(self, folder_path, foc=21, size=512):
         """
         Initiates the LunarRender class.
 
@@ -50,9 +50,11 @@ class LunarRender:
             The height of the output image in pixels.
         """
         self.folder_path = folder_path
-        self.size = size
-        self.fov = np.radians(fov)
-        self.images = {}
+        self.size = size # square pixel size of output image
+        self.foc = foc # focal length: mm
+        self.s_dim = 24e-3 * 1024 # sensor dimension: mm
+        self.fov = 2 * np.arctan(self.s_dim / (2 * self.foc)) # radians
+        self.images = {} # dict of images in folder_path
         self.min_max = [0,0,0,0]
 
         i=0
