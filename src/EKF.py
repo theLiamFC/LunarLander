@@ -1,85 +1,93 @@
 import numpy as np
 
 class EKF:
-    def __init__(self, state_dim, meas_dim):
+    def __init__(self, state_dim, meas_dim, mu):
         """
         Initialize the EKF.
-        :param state_dim: Dimension of the state vector.
-        :param meas_dim: Dimension of the measurement vector.
+        state_dim: Dimension of the state vector.
+        meas_dim: Dimension of the measurement vector.
+        mu: Gravitational parameter.
         """
-        # dimensions
         self.state_dim = state_dim
         self.meas_dim = meas_dim
+        self.mu = mu
 
-        # current state and covariance
-        self.x = np.zeros((state_dim, 1))  
-        self.sigma = np.eye(state_dim)         
-        self.Q = np.eye(state_dim)        
-        self.R = np.eye(meas_dim)         
+        self.x = np.zeros((state_dim, 1))
+        self.sigma = np.eye(state_dim)
+        self.Q = np.eye(state_dim)
+        self.R = np.eye(meas_dim)
 
-    def set_initial_state(self, x0, P0):
-        """
-        Set the initial state and covariance.
-        """
+    def set_initial_state(self, x0, sigma0):
         self.x = x0
-        self.sigma = P0
+        self.sigma = sigma0
 
     def set_process_noise(self, Q):
-        """
-        Set the process noise covariance.
-        """
         self.Q = Q
 
     def set_measurement_noise(self, R):
-        """
-        Set the measurement noise covariance.
-        """
         self.R = R
 
-    def predict(self, u, f, F_jacobian):
-        """
-        EKF prediction step.
-        :param u: Control input
-        :param f: Nonlinear state transition function, f(x, u)
-        :param F_jacobian: Function to compute Jacobian of f w.r.t x, F(x, u)
-        """
-        # Predict state
-        self.x = f(self.x, u)
-        # Predict covariance
-        F = F_jacobian(self.x, u)
-        self.sigma = F @ self.sigma @ F.T + self.Q
-
-    def update(self, z, h, H_jacobian):
-        """
-        EKF update step.
-        :param z: Measurement
-        :param h: Nonlinear measurement function, h(x)
-        :param H_jacobian: Function to compute Jacobian of h w.r.t x, H(x)
-        """
-        # Measurement prediction
-        z_pred = h(self.x)
-        # Innovation
-        y = z - z_pred
-        # Measurement Jacobian
-        H = H_jacobian(self.x)
-        # Innovation covariance
-        S = H @ self.sigma @ H.T + self.R
-        # Kalman gain
-        K = self.sigma @ H.T @ np.linalg.inv(S)
-        # Update state
-        self.x = self.x + K @ y
-        # Update covariance
-        I = np.eye(self.state_dim)
-        self.sigma = (I - K @ H) @ self.sigma
-
     def get_state(self):
-        """
-        Get the current state estimate.
-        """
         return self.x
 
     def get_covariance(self):
-        """
-        Get the current covariance estimate.
-        """
         return self.sigma
+    
+    def dynamics(self, x):
+        r = x[0:3].flatten()
+        v = x[3:6].flatten()
+        mu = self.mu
+        norm_r = np.linalg.norm(r)
+        a = -mu * r / norm_r**3
+        dxdt = np.hstack((v, a))
+        return dxdt.reshape(-1, 1)
+
+    def jacobian_A(self, x):
+        I3 = np.eye(3)
+        mu = self.mu
+
+        r = x[0:3].flatten()
+        norm_r = np.linalg.norm(r)        
+        rrT = np.outer(r, r)
+        da_dr = -mu * ((I3 / norm_r**3) - (3 * rrT) / norm_r**5)
+
+        A = np.zeros((6, 6))
+        A[0:3, 3:6] = I3
+        A[3:6, 0:3] = da_dr
+        return A
+
+    def measurement_model(self, x):
+        return x[0:3].reshape(-1, 1)
+
+    def jacobian_C(self):
+        C = np.zeros((3, 6))
+        C[0:3, 0:3] = np.eye(3)
+        return C
+
+    def predict(self, dt):
+        # Propagate state (Euler)
+        f = self.dynamics(self.x)
+        self.x = self.x + dt * f
+
+        # Jacobian of f at current state
+        A = self.jacobian_A(self.x)
+        Phi = np.eye(self.state_dim) + A * dt 
+
+        # Predict covariance
+        self.sigma = Phi @ self.sigma @ Phi.T + self.Q
+
+    def update(self, y):
+        """ Takes in a measurement vector y and updates the state and covariance. """
+        # Jacobian of measurement model
+        C = self.jacobian_C()
+
+        # Measurement residual
+        g = self.measurement_model(self.x)
+        y_residual = y.reshape(-1, 1) - g
+
+        # Kalman gain
+        K = self.sigma @ C.T @ np.linalg.inv(C @ self.sigma @ C.T + self.R)
+
+        # Update mean and covariance
+        self.x = self.x + K @ y_residual
+        self.sigma = self.sigma - K @ C @ self.sigma
