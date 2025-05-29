@@ -184,7 +184,7 @@ if __name__ == "__main__":
     
     detector = CraterDetector()
     detector.view_craters(tile)
-    print(cam.get_position_global(tile))
+    print(cam.get_position_global(tile)) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
 
         
         
