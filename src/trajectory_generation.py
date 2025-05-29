@@ -1,67 +1,79 @@
 import numpy as np
-import matplotlib.pyplot as plt
+from transformations import lla_to_mci
 
-def generate_trajectory(h0=15000, vx0=1600, vy0=0, dt=0.1, T_max=17000, m=2000):
-    g = 1.62  # lunar gravity (m/s^2)
-    t = 0
-    h = h0
-    vx = vx0
-    vy = vy0
-    x = 0
+def generate_3d_trajectory(
+    start_lat, start_lon, start_alt,
+    v0_local=np.array([0.0, 1600.0, 0.0]),  # Local ENU velocity
+    dt=1.0, T_max=7250, m=2000, theta0=0.0
+):
+    mu_moon = 4.9048695e12
+    R_moon = 1.7374e6
 
+    # Initial inertial position
+    r0 = lla_to_mci(start_lat, start_lon, start_alt, t=0.0, theta0=theta0)
+
+    # Define local ENU frame
+    lat_rad = np.radians(start_lat)
+    lon_rad = np.radians(start_lon)
+    east = np.array([-np.sin(lon_rad), np.cos(lon_rad), 0])
+    north = np.array([-np.sin(lat_rad)*np.cos(lon_rad), -np.sin(lat_rad)*np.sin(lon_rad), np.cos(lat_rad)])
+    up = np.array([np.cos(lat_rad)*np.cos(lon_rad), np.cos(lat_rad)*np.sin(lon_rad), np.sin(lat_rad)])
+
+    # Initial inertial velocity
+    v0 = v0_local[0]*east + v0_local[1]*north + v0_local[2]*up
+
+    # Setup simulation loop
+    r = r0.copy()
+    v = v0.copy()
+    t = 0.0
     traj = []
 
-    while h > 0:
-        speed_x = abs(vx)
-        speed_y = abs(vy)
+    while True:
+        r_mag = np.linalg.norm(r)
+        h = r_mag - R_moon
 
-        # === Phase 1: Kill Horizontal Velocity ===
-        if speed_x > 50:
-            thrust_angle = np.arctan2(-vy + 2, -vx + 1e-6)
-            thrust_mag = min(T_max, m * np.hypot(vx, vy + g))
+        # === Thrust logic ===
+        v_norm = np.linalg.norm(v)
+        r_hat = r / np.linalg.norm(r)   # Local "up" direction
+        h_safe = 100.0                  # Altitude threshold for terminal descent
+        v_terminal = -2.0              # Target touchdown vertical velocity (m/s)
+        v_descent = -10.0              # Controlled descent velocity (m/s)
+
+        if v_norm > 50 and h > h_safe:
+            # --- Phase 1: Braking burn to kill high velocity ---
+            thrust_dir = -v / (v_norm + 1e-6)
             phase = 1
 
-        # === Phase 2: Controlled Vertical Descent ===
-        elif speed_y > 2 and h > 100:
-            # Blend horizontal and vertical control
-            vx_target = 0.0
-            vy_target = -10.0
-
-            vx_error = vx - vx_target
-            vy_error = vy - vy_target
-
-            # Adjust thrust direction: tilt slightly against vx
-            thrust_angle = np.arctan2(-vy_error, -vx_error + 1e-3)
-
-            # Magnitude: enough to counter both descent and drift
-            ax_des = vx_error / dt
-            ay_des = vy_error / dt + g
-            acc_total = np.hypot(ax_des, ay_des)
-
-            thrust_mag = np.clip(m * acc_total, 0, T_max)
+        elif h > h_safe:
+            # --- Phase 2: Controlled descent toward -10 m/s along radial ---
+            v_target = v_descent * r_hat
+            v_error = v_target - v
+            thrust_dir = v_error / (np.linalg.norm(v_error) + 1e-6)
             phase = 2
 
-        # === Phase 3: Final Touchdown ===
         else:
-            thrust_angle = np.pi / 2  # vertical
-            target_vy = -0.5
-            vy_error = vy - target_vy
-            thrust_mag = np.clip(m * (abs(vy_error) / dt + g), 0, T_max)
+            # --- Phase 3: Final soft touchdown, target -2 m/s descent only ---
+            v_radial = np.dot(v, r_hat)  # Component of v in local vertical direction
+            v_error = v_terminal - v_radial
+            thrust_dir = v_error * r_hat - v  # Cancel current velocity, then add upward component
+            thrust_dir /= np.linalg.norm(thrust_dir) + 1e-6
             phase = 3
 
-        # Apply dynamics
-        ax = (thrust_mag / m) * np.cos(thrust_angle)
-        ay = (thrust_mag / m) * np.sin(thrust_angle) - g
+        # Gravity and thrust
+        acc_gravity = -mu_moon * r / r_mag**3
+        acc_desired = -acc_gravity + 0.5 * thrust_dir * (T_max / m)
+        thrust_mag = np.clip(np.linalg.norm(acc_desired) * m, 0, T_max)
+        acc_thrust = (thrust_mag / m) * thrust_dir
+        acc = acc_gravity + acc_thrust
 
-        vx += ax * dt
-        vy += ay * dt
-        x += vx * dt
-        h += vy * dt
+        # Integrate
+        v += acc * dt
+        r += v * dt
         t += dt
 
-        traj.append([t, x, h, vx, vy, thrust_mag, thrust_angle, phase])
+        traj.append([t, *r, *v, h, thrust_mag, *thrust_dir, phase])
 
-        if h <= 0 and abs(vx) < 0.5 and abs(vy) < 1.0:
+        if h <= 1: #and np.linalg.norm(v) < 2.0:
             break
 
     return np.array(traj)

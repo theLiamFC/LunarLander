@@ -107,9 +107,9 @@ def mci2oe(r_IJK, v_IJK):
 
     return a, e, i_deg, RAAN_deg, omega_deg, nu_deg
 
-# Convert Moon centered moon fixed coordinates to latitude, longitude, and altitude (LLA)
+# Convert Moon centered moon fixed coordinates to latitude, longitude, and altitude (meters) (LLA)
 def mcmf2lla(MCMF):
-    R_moon=1737.4  # km
+    R_moon = 1.7374e6  # meters
     # Assumes spherical Moon (selenocentric coordinates)
 
     r_x, r_y, r_z = MCMF
@@ -124,19 +124,19 @@ def mcmf2lla(MCMF):
     lat_deg = np.degrees(np.arcsin(r_z / r_norm))
 
     # Altitude above lunar surface (assumes spherical Moon)
-    altitude_km = r_norm - R_moon
+    alt_meters= r_norm - R_moon
 
-    return lat_deg, lon_deg, altitude_km
+    return lat_deg, lon_deg, alt_meters
 
-def lla2mcmf(lon_deg, lat_deg, alt_km):
-    R_moon=1737.4  # km
+def lla2mcmf(lon_deg, lat_deg, alt_meters):
+    R_moon = 1.7374e6  # meters
     
     # Convert angles to radians
     lat_rad = np.deg2rad(lat_deg)
     lon_rad = np.deg2rad(lon_deg)
 
     # Compute radial distance from Moon's center
-    r = R_moon + alt_km
+    r = R_moon + alt_meters
 
     # Convert to Cartesian coordinates
     x = r * np.cos(lat_rad) * np.cos(lon_rad)
@@ -144,6 +144,31 @@ def lla2mcmf(lon_deg, lat_deg, alt_km):
     z = r * np.sin(lat_rad)
 
     return np.array([x, y, z])
+
+def lla_to_mci(lat_deg, lon_deg, alt_m, t=0.0, theta0=0.0):
+    # Convert LLA to Moon-fixed frame (ECEF-like)
+    R_moon = 1.7374e6  # meters
+    lat = np.radians(lat_deg)
+    lon = np.radians(lon_deg)
+
+    x_fixed = (R_moon + alt_m) * np.cos(lat) * np.cos(lon)
+    y_fixed = (R_moon + alt_m) * np.cos(lat) * np.sin(lon)
+    z_fixed = (R_moon + alt_m) * np.sin(lat)
+
+    r_fixed = np.array([x_fixed, y_fixed, z_fixed])
+
+    # Rotate to inertial frame (MCI)
+    omega_moon = 2 * np.pi / (27.321661 * 86400)
+    theta = theta0 + omega_moon * t
+
+    R_z = np.array([
+        [np.cos(theta), -np.sin(theta), 0],
+        [np.sin(theta),  np.cos(theta), 0],
+        [0,              0,             1]
+    ])
+
+    r_inertial = R_z @ r_fixed
+    return r_inertial
 
 # Get local ENU frame at a point
 def landing_frame(lat_deg, lon_deg):
@@ -163,11 +188,31 @@ def convert_2d_trajectory_to_3d(trajectory_2d, landing_lat, landing_lon, landing
     offset_x, offset_y = final_offset
 
     # Adjust 2D trajectory so that the last point lands at the origin
+    # use east so that trajectory is always above equator
     traj_3d = []
     for x, y in trajectory_2d:
         dx = x - offset_x
         dy = y - offset_y
-        pos_vec = landing_vec + dx * north + dy * up
+        pos_vec = landing_vec + dx * east + dy * up
         traj_3d.append(pos_vec)
 
     return np.array(traj_3d), landing_vec
+
+def mci_to_mcmf(r_inertial, t, omega_moon=2 * np.pi / (27.321661 * 86400), theta0=0.0):
+    theta = theta0 + omega_moon * t
+    cos_t, sin_t = np.cos(theta), np.sin(theta)
+    R_z = np.array([
+        [cos_t,  sin_t, 0],
+        [-sin_t, cos_t, 0],
+        [0,      0,     1]
+    ])
+    return R_z @ r_inertial
+
+def convert_traj_to_moon_fixed(traj_inertial):
+    traj_fixed = []
+    for row in traj_inertial:
+        t = row[0]
+        r_inertial = row[1:4]
+        r_fixed = mci_to_mcmf(r_inertial, t)
+        traj_fixed.append(r_fixed)
+    return np.array(traj_fixed)
