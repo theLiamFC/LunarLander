@@ -135,26 +135,52 @@ class Camera():
     
     def get_scale(self, tile, alt, deg=True):
         # predictions = self.detector.detect_craters(tile)
-        z = self.focal * alt
+        z = self.focal / alt
         return z
     
     def get_position_global(self, tile, alt, deg=True):    
         predictions = self.detector.detect_craters(tile)
         
-        image_points = predictions[0,:2].flatten()
-        crater_x, crater_y = image_points
-        print("Pixel Coords in Image")
-        print(crater_x, crater_y)
+        crater_y, crater_x = predictions[0,:2].flatten()
+        image_points = np.array([crater_x, crater_y])
         
         image_points = np.append(image_points, 1).reshape(-1,1) #put in homogeneous form
         
-        print("Pixel Coords in Whole Image")
+        # print("Pixel Coords in Whole Image")
         gu, gv = locate_crater(tile, crater_x,crater_y)
+        
+        lat, lon = pixel_to_lat_lon(gu, gv, deg = True)
+        global_points3D = lla2mcmf(lon, lat, 0) 
+        global_points3D = global_points3D.reshape(-1,1)
+        
+        scale = self.get_scale(tile, alt, deg=True)
+        # print('Scale', scale)
+        
+        # print(f"Latitude of Crater: {lat}")
+        # print(f"Longitude of Crater: {lon}")
+        t = global_points3D - scale * np.linalg.inv(self.K)@image_points
+        t = t.flatten()
+        # t[2] = alt
+        t = np.array(mcmf2lla(t.flatten()))
+        # t[2] = t[2]*1e-3
+        # t[:2] = np.deg2rad(t[:2])
+        return np.array([lat, lon, alt]) #return tau as tx, ty, tz
+        
+    def get_position_global_hack(self, tile, alt, deg=True):
+        center_y, center_x = tile.image.shape
+        center_x = int(center_x/2)
+        center_y = int(center_y/2)
+                
+        image_points = np.append(np.array([center_x, center_y]), 1).reshape(-1,1) #put in homogeneous form
+        
+        print("Pixel Coords in Whole Image")
+        gu, gv = locate_crater(tile, center_x ,center_y)        
+        
         global_points = np.array([gu,gv])
         
-        lat, lon = pixel_to_lat_lon(global_points, deg = True)
-        # global_points3D = lla2mcmf(lon, lat, 0) 
-        # global_points3D = global_points3D.reshape(-1,1)
+        lat, lon = pixel_to_lat_lon(gu, gv, deg = True)
+        global_points3D = lla2mcmf(lon, lat, 0) 
+        global_points3D = global_points3D.reshape(-1,1)
         
         # scale = self.get_scale(tile, alt, deg=True)
         # print('Scale', scale)
@@ -165,10 +191,14 @@ class Camera():
         # t = t.flatten()
         # t[2] = alt
         # t = np.array(mcmf2lla(t.flatten()))
-        # # t[2] = t[2]*1e-3
-        # t[:2] = np.deg2rad(t[:2])
-        # t[2] = alt
+        
         return np.array([lat, lon, alt]) #return tau as tx, ty, tz
+        
+        
+        pass
+    
+        
+    
         
 if __name__ == "__main__":
     cam = Camera()

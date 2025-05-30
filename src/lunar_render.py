@@ -311,10 +311,10 @@ def locate_crater(tile, u, v):
     gu = tile.u + x_offset_f * tile.win
     gv = tile.v + y_offset_f * tile.win
 
-    return gu,gv
+    return gu, gv
 
-def pixel_to_lat_lon(pixel, pixel_scale=100, deg=False):
-    u,v = pixel.flatten()
+def pixel_to_lat_lon(u, v, pixel_scale=100, deg=False):
+    
     x = pixel_scale*u
     y = pixel_scale*v
     lon = x / MOON_RADIUS_M

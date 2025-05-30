@@ -62,9 +62,10 @@ if __name__ == "__main__":
     for i in range(traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
         tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
-        measurements[i] = cam.get_position_global(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
+        measurements[i] = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
         print(f"True State (LLA): lat: {lat} deg, lon: {lon} deg, alt: {alt} m")
         print(f"Estimated State (LLA): lat: {measurements[i,0]} deg, lon: {measurements[i,1]} deg, alt: {measurements[i,2]} m")
+    
     measurements
     
     # lunar_sim = LunarSimulator(
