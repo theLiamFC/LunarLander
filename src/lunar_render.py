@@ -61,6 +61,7 @@ class LunarRender:
         self.images = {} # dict of images in folder_path
         self.min_max = [0,0,0,0]
         self.debug = debug
+        self.verbose = True
 
         i=0
         for fname in os.listdir(self.folder_path):
@@ -249,7 +250,7 @@ class LunarRender:
         if np.isnan(render).any():
             raise ValueError(f"Requested render at {u,v,alt} out of bounds of available imaging: min {self.min_max[0:2]}, max {self.min_max[2:4]}")
         else:
-            print(f"Rendered {render.shape} image at {u,v,alt} pixels from {count} images in {self.folder_path}")
+            if self.verbose: print(f"Rendered {render.shape[0]}x{render.shape[1]} image at {u,v,alt} (px,px,m) from {count} images in {self.folder_path}")
             
             # normalize values to 0-255
             minv, maxv = render.min(), render.max()
@@ -283,34 +284,34 @@ class LunarRender:
         img = Image.fromarray(tile.image, mode='L')
         img.save(filename, format='JPEG', quality=90)
 
-    def locate_crater(self, tile, u, v):
-        """
-        Translates pixel coordinates within a given tile to global coordinates
-        in pixels. Assumes image axes aligned with the origin in the top left.
+def locate_crater(tile, u, v):
+    """
+    Translates pixel coordinates within a given tile to global coordinates
+    in pixels. Assumes image axes aligned with the origin in the top left.
 
-        Parameters
-        ----------
-        tile : Tile class
-            A custom class containing an 2d np array, centering x,y (m), and window size (m).
-        u : float
-            The pixel coordinates in x axis.
-        v : float
-            The pixel coordinates in y axis.
-        
-        Returns
-        ----------
-        u, v : float
-            The global coordinates in pixels.
-        """
-        # Calculate fractional offset from center
-        x_offset_f = (u / (tile.image.shape[0]-1)) - 0.5
-        y_offset_f = 0.5 - (v / (tile.image.shape[1]-1))
+    Parameters
+    ----------
+    tile : Tile class
+        A custom class containing an 2d np array, centering x,y (m), and window size (m).
+    u : float
+        The pixel coordinates in x axis.
+    v : float
+        The pixel coordinates in y axis.
+    
+    Returns
+    ----------
+    u, v : float
+        The global coordinates in pixels.
+    """
+    # Calculate fractional offset from center
+    x_offset_f = (u / (tile.image.shape[0]-1)) - 0.5
+    y_offset_f = 0.5 - (v / (tile.image.shape[1]-1))
 
-        # add frac * win to x,y to calc global position within tile
-        gu = tile.u + x_offset_f * tile.win
-        gv = tile.v + y_offset_f * tile.win
+    # add frac * win to x,y to calc global position within tile
+    gu = tile.u + x_offset_f * tile.win
+    gv = tile.v + y_offset_f * tile.win
 
-        return gu,gv
+    return gu,gv
 
 def pixel_to_lat_lon(pixel, pixel_scale=100, deg=False):
     u,v = pixel.flatten()

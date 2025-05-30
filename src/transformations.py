@@ -216,3 +216,29 @@ def convert_traj_to_moon_fixed(traj_inertial):
         r_fixed = mci_to_mcmf(r_inertial, t)
         traj_fixed.append(r_fixed)
     return np.array(traj_fixed)
+
+def mcmf_traj_to_lla(traj_fixed_m, R_moon=1737400.0):
+    """
+    Convert an entire trajectory from Moon-fixed (MCMF) coordinates to LLA (lat, lon, alt).
+    
+    Parameters:
+        traj_fixed_m : np.ndarray
+            Shape (N, 3) or (N, >=3) array of (x, y, z) positions in meters in Moon-fixed frame.
+        R_moon : float
+            Radius of the Moon in meters. Default is 1737400.0 m.
+    
+    Returns:
+        lla_array : np.ndarray
+            Shape (N, 3) array of (latitude [deg], longitude [deg], altitude [m])
+    """
+    lla_array = []
+
+    for r in traj_fixed_m[:, :3]:  # use only x, y, z
+        x, y, z = r
+        r_norm = np.linalg.norm([x, y, z])
+        lat = np.degrees(np.arcsin(z / r_norm))
+        lon = np.degrees(np.arctan2(y, x))
+        alt = r_norm - R_moon
+        lla_array.append([lat, lon, alt])
+
+    return np.array(lla_array)

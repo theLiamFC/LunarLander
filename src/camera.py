@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from crater_detector import CraterDetector
 from transformations import lla2mcmf, mcmf2lla
-from lunar_render import pixel_to_lat_lon
+from lunar_render import pixel_to_lat_lon, locate_crater
 """
 
 NOTES:
@@ -20,6 +20,7 @@ class Camera():
         self.detector = CraterDetector()
         
         if K is None:
+            
             f = 21e-3 #23mm focal length
             pixel_size = 24e-6
             focal = f/pixel_size
@@ -27,6 +28,7 @@ class Camera():
                                 [0, focal, -256], 
                                 [0, 0, 1]])
             self.focal = focal
+            self.f = f
         else:
             self.K = K #K represents the camera intrinsic matrix --> this needs to be input --> input as a 3x3
         
@@ -131,44 +133,42 @@ class Camera():
         t = 1/scale (Kinv@H)[:,2].reshape(-1,1)
         return R, t 
     
-    def get_scale(self, tile, lat, deg=True):
-        if deg:
-            lat = np.deg2rad(lat)
-            
-        predictions = self.detector.detect_craters(tile)
-        diameter = (predictions[0,2] / np.cos(lat) + predictions[0,3]) / 2 #need to scale radius
-        radius_image = diameter/2 
-        # radius_image = self.detector.estimate_crater_radius(tile)[0] #radius in pixels only get the first one
-        radius_real = radius_image / tile.image.shape[0] * tile.win * 100      #voodoo magic to get real radius
-        z = self.focal * radius_real / radius_image
-    
+    def get_scale(self, tile, alt, deg=True):
+        # predictions = self.detector.detect_craters(tile)
+        z = self.focal * alt
         return z
     
-    def get_position_global(self, tile):    
+    def get_position_global(self, tile, alt, deg=True):    
         predictions = self.detector.detect_craters(tile)
         
         image_points = predictions[0,:2].flatten()
         crater_x, crater_y = image_points
+        print("Pixel Coords in Image")
+        print(crater_x, crater_y)
         
         image_points = np.append(image_points, 1).reshape(-1,1) #put in homogeneous form
         
-        gu, gv = moon.locate_crater(tile, crater_x,crater_y)
+        print("Pixel Coords in Whole Image")
+        gu, gv = locate_crater(tile, crater_x,crater_y)
         global_points = np.array([gu,gv])
         
-        lat, lon = pixel_to_lat_lon(global_points, deg=True)
-        global_points3D = lla2mcmf(lon, lat, 0)*1e3 #converting points to m space
-        global_points3D = global_points3D.reshape(-1,1)
+        lat, lon = pixel_to_lat_lon(global_points, deg = True)
+        # global_points3D = lla2mcmf(lon, lat, 0) 
+        # global_points3D = global_points3D.reshape(-1,1)
         
+        # scale = self.get_scale(tile, alt, deg=True)
+        # print('Scale', scale)
         
-        scale = self.get_scale(tile, lat, deg=True)
-        print('Scale', scale)
-        
-        print(f"Latitude of Crater: {lat}")
-        print(f"Longitude of Crater: {lon}")
-        t = global_points3D - scale * np.linalg.inv(self.K)@image_points
-        t = mcmf2lla(t.flatten()*1e-3)
-        
-        return t #return tau as tx, ty, tz
+        # print(f"Latitude of Crater: {lat}")
+        # print(f"Longitude of Crater: {lon}")
+        # t = global_points3D - scale * np.linalg.inv(self.K)@image_points
+        # t = t.flatten()
+        # t[2] = alt
+        # t = np.array(mcmf2lla(t.flatten()))
+        # # t[2] = t[2]*1e-3
+        # t[:2] = np.deg2rad(t[:2])
+        # t[2] = alt
+        return np.array([lat, lon, alt]) #return tau as tx, ty, tz
         
 if __name__ == "__main__":
     cam = Camera()
