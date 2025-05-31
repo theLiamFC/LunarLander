@@ -39,5 +39,5 @@ brew install wget
 ```
 2. To selectively download 100M IMG files, corresponding 100M xml files, and the README from LROC - in your target folder run:
 ```shell
-wget -r -l1 -np -nd -A "*DAWN_E*100M.IMG,*DAWN_E*100M.XML,*README.TXT" "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/BDR/WAC_ROI/WAC_ROI_FARSIDE_DUSK/"
+wget -r -l1 -np -nd -A "*DUSK_E*100M.IMG,*DUSK_E*100M.XML,*README.TXT" "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/BDR/WAC_ROI/WAC_ROI_FARSIDE_DUSK/"
 ```
