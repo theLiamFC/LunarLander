@@ -39,18 +39,18 @@ if __name__ == "__main__":
     moon = LunarRender('../WAC_ROI',debug=False)
     moon.verbose = False
     
-    if 0:
+    if False:
         # set initial state
-        # x0 = np.array([], []) # [r v] in meters and m/s
-        # state_dim = np.size(x0)
+        x0 = np.array([r0_inertial], [v0_inertial]) # [r v] in meters and m/s
+        state_dim = np.size(x0)
         meas_dim = 3
-        # sigma0 = 10000*np.eye(state_dim)
+        sigma0 = 10000*np.eye(state_dim)
 
         # initialize EKF
-        # ekf = EKF(state_dim, meas_dim, mu_moon = 4.9048695e12)
-        # ekf.set_initial_state(x0, sigma0)
-        # ekf.set_process_noise(np.eye(state_dim))
-        # ekf.set_measurement_noise(np.eye(meas_dim))
+        ekf = EKF(state_dim, meas_dim, mu_moon = 4.9048695e12)
+        ekf.set_initial_state(x0, sigma0)
+        ekf.set_process_noise(np.eye(state_dim))
+        ekf.set_measurement_noise(np.eye(meas_dim))
         # predict
         ekf.predict(TIME_STEP)
 
