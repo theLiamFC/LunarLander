@@ -124,7 +124,6 @@ if __name__ == "__main__":
     axs[2].set_xlabel('Time (s)')
     plt.suptitle('True vs EKF Estimated ECI Position Components')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.show()
 
     # Compute estimation error
     error = est_pos - true_pos  # shape: (N, 3)
@@ -141,7 +140,6 @@ if __name__ == "__main__":
     axs[2].set_xlabel('Time (s)')
     plt.suptitle('EKF Estimation Error in ECI Position Components')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.show()
     
     # lunar_sim = LunarSimulator(
     #     target,  # target landing site [x,y,z,vx=0,vy=0,vz=0] (m)
@@ -163,3 +161,5 @@ if __name__ == "__main__":
     # )
 
     # LunarSimulator.plot()
+
+    plt.show()
