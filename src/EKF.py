@@ -18,7 +18,7 @@ class EKF:
         self.R = np.eye(meas_dim)
 
     def set_initial_state(self, x0, sigma0):
-        self.x = x0
+        self.x = x0.reshape(-1, 1)
         self.sigma = sigma0
 
     def set_process_noise(self, Q):
