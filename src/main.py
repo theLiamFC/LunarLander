@@ -118,20 +118,19 @@ if __name__ == "__main__":
 
     for i in range(3):
         # Plot only up to 100 seconds
-        idx_100s = np.where(time <= 100)[0]
-        axs[i].plot(time[idx_100s], true_pos[idx_100s, i], label='True', color='black')
-        axs[i].plot(time[idx_100s], est_pos[idx_100s, i], label='EKF Estimate', color='red', linestyle='--')
+        axs[i].plot(time, true_pos[:, i], label='True', color='black')
+        axs[i].plot(time, est_pos[:, i], label='EKF Estimate', color='red', linestyle='--')
         # 1-sigma and 2-sigma bounds
         axs[i].fill_between(
-            time[idx_100s],
-            est_pos[idx_100s, i] - sigma_sqrt[idx_100s, i],
-            est_pos[idx_100s, i] + sigma_sqrt[idx_100s, i],
+            time,
+            est_pos[:, i] - sigma_sqrt[:, i],
+            est_pos[:, i] + sigma_sqrt[:, i],
             color='orange', alpha=0.3, label='1σ'
         )
         axs[i].fill_between(
-            time[idx_100s],
-            est_pos[idx_100s, i] - 2*sigma_sqrt[idx_100s, i],
-            est_pos[idx_100s, i] + 2*sigma_sqrt[idx_100s, i],
+            time,
+            est_pos[:, i] - 2*sigma_sqrt[:, i],
+            est_pos[:, i] + 2*sigma_sqrt[:, i],
             color='yellow', alpha=0.2, label='2σ'
         )
         axs[i].set_ylabel(labels[i])
