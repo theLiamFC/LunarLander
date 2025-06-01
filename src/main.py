@@ -43,7 +43,7 @@ if __name__ == "__main__":
     thrust_total = thrust_dir * thrust_mag[:, np.newaxis]  # Total thrust vector
 
     cam = Camera()
-    moon = LunarRender('../WAC_ROI',debug=False)
+    moon = LunarRender('WAC_ROI',debug=False)
     moon.verbose = False
     
     # set initial state
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     ekf.set_initial_state(x0, sigma0)
     Q = 1*np.eye(state_dim)
     ekf.set_process_noise(Q)
-    R = 1000 * np.eye(meas_dim) 
+    R = 1e3 * np.eye(meas_dim) 
     ekf.set_measurement_noise(R)
 
     # Storage for EKF estimates
@@ -76,18 +76,24 @@ if __name__ == "__main__":
 
     for i in range(1, traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
+
+        if alt <= 0:
+            print(f"Reached the surface at step {i}, stopping simulation.")
+            ekf_estimates[i] = ekf_estimates[i-1]  # Trim estimates to current step
+            break
+
         tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
         measurement = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
-        measurements[i] = measurement
+        measurements[i] = measurement + np.random.multivariate_normal(np.zeros(meas_dim), 0.01*R)  # Add measurement noise
 
         # get measurements
-        lat_meas = measurement[0]
-        lon_meas = measurement[1]
-        alt_meas = measurement[2]
+        lat_meas = measurements[i,0]
+        lon_meas = measurements[i,1]
+        alt_meas = measurements[i,2]
 
         # convert LLA measurements to inertial coordinates
         # TODO: MAKE SURE THIS t IS CORRECT, MIGHT NEED TO OFFSET by i - 1 also...
-        t = traj_inertial[i, 0]  # time in seconds
+        t = traj_inertial[i-1, 0]  # time in seconds
         r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
 
         # EKF predict and update
