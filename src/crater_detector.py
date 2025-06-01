@@ -18,7 +18,7 @@ class CraterDetector:
         self.__predictions = None
         
         self.CLIENT = InferenceHTTPClient(
-            api_url="https://serverless.roboflow.com",
+            api_url="https://detect.roboflow.com",
             api_key=RF_API_KEY
         )
     
