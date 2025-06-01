@@ -1,7 +1,7 @@
 import numpy as np
 
 class EKF:
-    def __init__(self, state_dim, meas_dim, mu):
+    def __init__(self, state_dim, meas_dim, mu, mass=2000):
         """
         Initialize the EKF.
         state_dim: Dimension of the state vector.
@@ -11,6 +11,7 @@ class EKF:
         self.state_dim = state_dim
         self.meas_dim = meas_dim
         self.mu = mu
+        self.mass = mass
 
         self.x = np.zeros((state_dim, 1))
         self.sigma = np.eye(state_dim)
@@ -18,7 +19,7 @@ class EKF:
         self.R = np.eye(meas_dim)
 
     def set_initial_state(self, x0, sigma0):
-        self.x = x0
+        self.x = x0.reshape(-1, 1)
         self.sigma = sigma0
 
     def set_process_noise(self, Q):
@@ -33,12 +34,12 @@ class EKF:
     def get_covariance(self):
         return self.sigma
     
-    def dynamics(self, x):
+    def dynamics(self, x, u):
         r = x[0:3].flatten()
         v = x[3:6].flatten()
         mu = self.mu
         norm_r = np.linalg.norm(r)
-        a = -mu * r / norm_r**3
+        a = (-mu * r / norm_r**3) + (u / self.mass)  # u is thrust
         dxdt = np.hstack((v, a))
         return dxdt.reshape(-1, 1)
 
@@ -64,9 +65,9 @@ class EKF:
         C[0:3, 0:3] = np.eye(3)
         return C
 
-    def predict(self, dt):
+    def predict(self, dt, u):
         # Propagate state (Euler)
-        f = self.dynamics(self.x)
+        f = self.dynamics(self.x, u)
         self.x = self.x + dt * f
 
         # Jacobian of f at current state

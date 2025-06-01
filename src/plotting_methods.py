@@ -161,6 +161,7 @@ landing_xyz = traj_fixed[-1, :3]   # Last position in Moon-fixed frame\
 landing_lat,landing_lon,altitude_meters = mcmf2lla(landing_xyz)
 
 landing_LLA = (landing_lat,landing_lon,altitude_meters)  # Target landing site in LLA (degrees, degrees, meters)
+print(f"Landing LLA: {landing_LLA}")
 
 plot_moon_global_view_with_trajectory(
     traj_fixed_m=traj_fixed,
