@@ -75,22 +75,7 @@ if __name__ == "__main__":
     sigma_sqrt[0] = np.sqrt(np.diag(ekf.sigma))
 
     for i in range(1, traj_fixed_LLA.shape[0]):
-        lat, lon, alt = traj_fixed_LLA[i,:]
-        # tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
-        # measurement = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
-        # measurements[i] = measurement
-
-        # get measurements
-        # lat_meas = measurement[0]
-        # lon_meas = measurement[1]
-        # alt_meas = measurement[2]
-
-        # convert LLA measurements to inertial coordinates
-        # t = traj_inertial[i, 0]  # time in seconds
-        # r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
-        # r_mci_meas = lla_to_mci(lat, lon, alt, t)
         r_mci_meas = traj_inertial[i, 1:4]  # x, y, z in ECI
-
 
         # Add Gaussian white noise to each position component
         noise_std = 5  # meters, adjust as needed
