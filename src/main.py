@@ -36,6 +36,11 @@ if __name__ == "__main__":
     v0_inertial = initial_row[4:7]  # vx, vy, vz
     time_step = traj_inertial[1, 0] - traj_inertial[0, 0]
 
+    # Extract control inputs
+    thrust_mag = traj_inertial[:,8] # Thrust magnitude
+    thrust_dir = traj_inertial[:,9:12] # Thrust direction (unit vector)
+    thrust_total = np.linalg.norm(thrust_dir, axis=1) * thrust_mag  # Total thrust vector
+
     cam = Camera()
     moon = LunarRender('../WAC_ROI',debug=False)
     moon.verbose = False
@@ -72,7 +77,7 @@ if __name__ == "__main__":
         r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
 
         # EKF predict and update
-        ekf.predict(time_step)
+        ekf.predict(time_step,thrust_total[i])
         ekf.update(r_mci_meas)
 
         # Store EKF estimate
