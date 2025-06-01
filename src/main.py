@@ -5,6 +5,7 @@ from transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to
 import numpy as np
 import pandas as pd
 from EKF import EKF
+from EKF_fusion import EKF_fusion
 from lunar_render import LunarRender
 import matplotlib.pyplot as plt
 
@@ -57,8 +58,25 @@ if __name__ == "__main__":
     x0 = x0 + estimate_noise 
     sigma0 = 1000 * sigma_std
 
-    # initialize EKF
-    ekf = EKF(state_dim, meas_dim, mu = 4.9048695e12)
+    # # initialize EKF
+    # ekf = EKF(state_dim, meas_dim, mu = 4.9048695e12)
+    # ekf.set_initial_state(x0, sigma0)
+    # Q = 1*np.eye(state_dim)
+    # ekf.set_process_noise(Q)
+    # R = 1000 * np.eye(meas_dim) 
+    # ekf.set_measurement_noise(R)
+
+    # # Storage for EKF estimates
+    # ekf_estimates = np.zeros((traj_fixed_LLA.shape[0], state_dim))
+    # measurements = np.zeros((traj_fixed_LLA.shape[0], 3))
+    # ekf_estimates[0] = ekf.x.flatten()  # Store initial state estimate
+
+    # # Store sqrt of diagonal of covariance (sigma) for each time step
+    # sigma_sqrt = np.zeros((traj_fixed_LLA.shape[0], state_dim))
+    # sigma_sqrt[0] = np.sqrt(np.diag(ekf.sigma))
+
+    # initialize EKF Fusion
+    ekf = EKF_fusion(state_dim, meas_dim, mu = 4.9048695e12)
     ekf.set_initial_state(x0, sigma0)
     Q = 1*np.eye(state_dim)
     ekf.set_process_noise(Q)
@@ -89,10 +107,12 @@ if __name__ == "__main__":
         # TODO: MAKE SURE THIS t IS CORRECT, MIGHT NEED TO OFFSET by i - 1 also...
         t = traj_inertial[i, 0]  # time in seconds
         r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
+        a_mci_meas = np.zeros(3)  # FILL IN IMU MEASUREMENT HERE (3,1) acceleration in MCI frame
+        full_meas = np.hstack((r_mci_meas, a_mci_meas))  # Combine position and acceleration measurements
 
         # EKF predict and update
         ekf.predict(time_step,thrust_total[i - 1])
-        ekf.update(r_mci_meas)
+        ekf.update(full_meas,thrust_total[i - 1])
 
         # Store EKF estimate
         ekf_estimates[i] = ekf.x.flatten()

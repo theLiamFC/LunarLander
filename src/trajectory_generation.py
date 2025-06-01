@@ -51,12 +51,20 @@ def generate_3d_trajectory(
             thrust_dir = v_error / (np.linalg.norm(v_error) + 1e-6)
             phase = 2
 
-        else:
-            # --- Phase 3: Final soft touchdown, target -2 m/s descent only ---
-            v_radial = np.dot(v, r_hat)  # Component of v in local vertical direction
+        elif h <= h_safe:
+            # --- Phase 3: Controlled vertical descent using PD control ---
+            v_radial = np.dot(v, r_hat)
+            a_radial = np.dot(acc_gravity, r_hat)
+
+            # PD controller: target v_terminal with damping
             v_error = v_terminal - v_radial
-            thrust_dir = v_error * r_hat - v  # Cancel current velocity, then add upward component
-            thrust_dir /= np.linalg.norm(thrust_dir) + 1e-6
+            Kp = 0.5
+            Kd = 0.01
+            a_cmd = Kp * v_error - Kd * v_radial - a_radial  # command acceleration upward
+
+            # Thrust only in radial direction
+            thrust_dir = r_hat
+            thrust_mag = np.clip(m * a_cmd, 0, T_max)
             phase = 3
 
         # Gravity and thrust
@@ -73,7 +81,7 @@ def generate_3d_trajectory(
 
         traj.append([t, *r, *v, h, thrust_mag, *thrust_dir, phase])
 
-        if h <= 1: #and np.linalg.norm(v) < 2.0:
+        if h <= 100: #and np.linalg.norm(v) < 2.0:
             break
 
     return np.array(traj)
