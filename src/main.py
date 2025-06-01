@@ -4,8 +4,9 @@ from trajectory_generation import generate_3d_trajectory
 from transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to_mci
 import numpy as np
 import pandas as pd
-import EKF
+from EKF import EKF
 from lunar_render import LunarRender
+import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__":
@@ -42,19 +43,23 @@ if __name__ == "__main__":
     thrust_total = np.linalg.norm(thrust_dir, axis=1) * thrust_mag  # Total thrust vector
 
     cam = Camera()
-    moon = LunarRender('../WAC_ROI',debug=False)
-    moon.verbose = False
+    # moon = LunarRender('../WAC_ROI',debug=False)
+    # moon.verbose = False
     
     # set initial state
     x0 = np.hstack((r0_inertial, v0_inertial))  # [x, y, z, vx, vy, vz]
     state_dim = x0.size
     meas_dim = 3  # LLA measurement
-    sigma0 = 10000 * np.eye(state_dim)
+    sigma0 = 1 * np.eye(state_dim)
 
     # initialize EKF
-    ekf = EKF(state_dim, meas_dim, mu_moon = 4.9048695e12)
+    ekf = EKF(state_dim, meas_dim, mu = 4.9048695e12)
     ekf.set_initial_state(x0, sigma0)
-    ekf.set_process_noise(np.eye(state_dim))
+    Q = .01*np.eye(state_dim)
+    Q[3, 3] = 0.0001  # Process noise for velocity
+    Q[4, 4] = 0.0001  # Process noise for velocity
+    Q[5, 5] = 0.0001  # Process noise for velocity
+    ekf.set_process_noise(Q)
     ekf.set_measurement_noise(np.eye(meas_dim))
 
     # Storage for EKF estimates
@@ -63,32 +68,80 @@ if __name__ == "__main__":
     
     for i in range(traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
-        tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
-        measurement = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
-        measurements[i] = measurement
+        # tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
+        # measurement = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
+        # measurements[i] = measurement
 
         # get measurements
-        lat_meas = measurement[0]
-        lon_meas = measurement[1]
-        alt_meas = measurement[2]
+        # lat_meas = measurement[0]
+        # lon_meas = measurement[1]
+        # alt_meas = measurement[2]
 
         # convert LLA measurements to inertial coordinates
         t = traj_inertial[i, 0]  # time in seconds
-        r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
+        # r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
+        # r_mci_meas = lla_to_mci(lat, lon, alt, t)
+        r_mci_meas = traj_inertial[i, 1:4]  # x, y, z in ECI
+
+
+        # Add Gaussian white noise to each position component
+        noise_std = 3  # meters, adjust as needed
+        noise = np.random.normal(0, noise_std, size=3)
+        r_mci_meas_noisy = r_mci_meas + noise
 
         # EKF predict and update
         ekf.predict(time_step,thrust_total[i])
-        ekf.update(r_mci_meas)
+        ekf.update(r_mci_meas_noisy)
 
         # Store EKF estimate
         ekf_estimates[i] = ekf.x.flatten()
 
         print(f"Step {i}")
         print(f"True State (LLA): lat: {lat} deg, lon: {lon} deg, alt: {alt} m")
-        print(f"Measurement (LLA): lat: {measurement[0]} deg, lon: {measurement[1]} deg, alt: {measurement[2]} m")
+        # print(f"Measurement (LLA): lat: {measurement[0]} deg, lon: {measurement[1]} deg, alt: {measurement[2]} m")
         print(f"EKF Estimate (state): {ekf.x}")
     
     measurements
+
+    # Extract time and true ECI positions from traj_inertial
+    time = traj_inertial[:, 0]
+    true_pos = traj_inertial[:, 1:4]  # columns 1,2,3 are x,y,z in ECI
+
+    # Extract estimated ECI positions from EKF
+    est_pos = ekf_estimates[:, 0:3]  # columns 0,1,2 are x,y,z
+
+    # Plot
+    fig, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    labels = ['x (m)', 'y (m)', 'z (m)']
+
+    for i in range(3):
+        axs[i].plot(time, true_pos[:, i], label='True', color='black')
+        axs[i].plot(time, est_pos[:, i], label='EKF Estimate', color='red', linestyle='--')
+        axs[i].set_ylabel(labels[i])
+        axs[i].legend()
+        axs[i].grid(True)
+
+    axs[2].set_xlabel('Time (s)')
+    plt.suptitle('True vs EKF Estimated ECI Position Components')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+
+    # Compute estimation error
+    error = est_pos - true_pos  # shape: (N, 3)
+    
+    # Plot estimation error for each component
+    fig, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    labels = ['x error (m)', 'y error (m)', 'z error (m)']
+    
+    for i in range(3):
+        axs[i].plot(time, error[:, i], color='blue')
+        axs[i].set_ylabel(labels[i])
+        axs[i].grid(True)
+    
+    axs[2].set_xlabel('Time (s)')
+    plt.suptitle('EKF Estimation Error in ECI Position Components')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
     
     # lunar_sim = LunarSimulator(
     #     target,  # target landing site [x,y,z,vx=0,vy=0,vz=0] (m)
@@ -110,4 +163,3 @@ if __name__ == "__main__":
     # )
 
     # LunarSimulator.plot()
-
