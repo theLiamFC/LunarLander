@@ -37,7 +37,7 @@ class Tile(NamedTuple):
     time: float # simulation time of render
 
 class LunarRender:
-    def __init__(self, folder_path, foc=21e-3, size=512, debug=False):
+    def __init__(self, folder_path, foc=21e-3, size=512, debug=True):
         """
         Initiates the LunarRender class.
 
@@ -63,9 +63,10 @@ class LunarRender:
         self.debug = debug
         self.verbose = True
 
-        i=0
         for fname in os.listdir(self.folder_path):
-            if not fname.lower().endswith('.xml'):
+            print(f"Processing {fname}...") if self.debug else None
+            if not fname.lower().endswith('.img'):
+                print(f"Skipping {fname}, not a valid image file.") if self.debug else None
                 continue
 
             base = os.path.splitext(fname)[0]
@@ -89,15 +90,11 @@ class LunarRender:
                 image_data = src.read()
                 print(f"Image shape: {image_data.shape}")
 
-            wrap = src.bounds.left > 2729100.0
+            wrap = src.bounds.left > 2729100.0 if fname.startswith('WAC_ROI_NEAR') else False
             
             self.images[img_path] = {
                 'src': src, # rasterio object
                 'res': src.res, # m/pix
-                'min_lat': None,
-                'max_lat': None,
-                'min_lon': None,
-                'max_lon': None,
                 'left': src.bounds.left if not wrap else src.bounds.left -10916400.0,
                 'right': src.bounds.right if not wrap else src.bounds.right -10916400.0,
                 'bottom': src.bounds.bottom,
@@ -304,8 +301,8 @@ def locate_crater(tile, u, v):
         The global coordinates in pixels.
     """
     # Calculate fractional offset from center
-    x_offset_f = (u / (tile.image.shape[0]-1)) - 0.5
-    y_offset_f = 0.5 - (v / (tile.image.shape[1]-1))
+    x_offset_f = (u / tile.image.shape[0]) - 0.5
+    y_offset_f = 0.5 - (v / tile.image.shape[1])
 
     # add frac * win to x,y to calc global position within tile
     gu = tile.u + x_offset_f * tile.win
@@ -341,8 +338,22 @@ def lat_lon_to_pixel(lat, lon, pixel_scale=100, deg=False):
     
 # Example usage:
 if __name__ == "__main__":
-    moon = LunarRender('../WAC_ROI',debug=True)
-    tile = moon.render(u=-900, v=17000, alt=100000)
+    moon = LunarRender('WAC_ROI',debug=False)
+    tile = moon.render(u=80000, v=0, alt=100000)
+    # tile = moon.render_ll(lon=0, lat=80000, alt=75000, deg=True)
     moon.tile2jpg(tile, "lunar_images/tile.jpg")
 
+# WAC_ROI_FARSIDE_DUSK:
+# IMAGE_NAME	    LEFT (m)	RIGHT (m)	BOTTOM (m)	TOP (m)
+# E300S1350_100M	2,729,100	-1,819,400	5,458,200	0
+# E300N2250_100M	5,458,200	0	        8,187,300	1,819,400
+# E300S2250_100M	5,458,200	-1,819,400	8,187,300	0
+# E300N1350_100M	2,729,100	0	        5,458,200	1,819,400
+
+# WAC_ROI_NEARSIDE_DAWN:
+# IMAGE_NAME        LEFT (m)    BOTTOM (m)  RIGHT (m)   TOP (m)
+# E300S0450_100M    0           -1,819,400  2,729,100   0
+# E300N0450_100M    0           0           2,729,100   1,819,400
+# E300S3150_100M    8,187,300   -1,819,400  10,916,400  0
+# E300N3150_100M    8,187,300   0           10,916,400  1,819,400
 
