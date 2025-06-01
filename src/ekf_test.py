@@ -90,10 +90,6 @@ if __name__ == "__main__":
         ekf_estimates[i] = ekf.x.flatten()
         sigma_sqrt[i] = np.sqrt(np.diag(ekf.sigma))
 
-        print(f"Step {i}")
-        print(f"True State (LLA): lat: {lat} deg, lon: {lon} deg, alt: {alt} m")
-        # print(f"Measurement (LLA): lat: {measurement[0]} deg, lon: {measurement[1]} deg, alt: {measurement[2]} m")
-        print(f"EKF Estimate (state): {ekf.x}")
      
     measurements
 
