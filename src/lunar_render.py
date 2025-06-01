@@ -37,7 +37,7 @@ class Tile(NamedTuple):
     time: float # simulation time of render
 
 class LunarRender:
-    def __init__(self, folder_path, foc=21e-3, size=512, debug=True):
+    def __init__(self, folder_path, foc=21e-3, size=512, debug=False):
         """
         Initiates the LunarRender class.
 
@@ -119,7 +119,7 @@ class LunarRender:
             except Exception:
                 pass
 
-    def render_ll(self, lon, lat, alt, time=0.0, deg=False):
+    def render_ll(self, lat, lon, alt, time=0.0, deg=False):
         """
         Render a composite view centered at (lon, lat) from a given altitude (m).
 
@@ -152,7 +152,7 @@ class LunarRender:
             lon = np.radians(lon)
             lat = np.radians(lat)
 
-        u = MOON_RADIUS_M * lon / 100
+        u = MOON_RADIUS_M * lon / 100 + (2_729_100.0 / 100)
         v = MOON_RADIUS_M * lat / 100
 
         return self.render(u, v, alt, time)
@@ -245,7 +245,7 @@ class LunarRender:
             ] = fragment[:out_h, :out_w]
 
         if np.isnan(render).any():
-            raise ValueError(f"Requested render at {u,v,alt} out of bounds of available imaging: min {self.min_max[0:2]}, max {self.min_max[2:4]}")
+            raise ValueError(f"Requested render at {u,v,alt} (px,px,m) out of bounds of available imaging: min {self.min_max[0:2]}, max {self.min_max[2:4]}")
         else:
             if self.verbose: print(f"Rendered {render.shape[0]}x{render.shape[1]} image at {u,v,alt} (px,px,m) from {count} images in {self.folder_path}")
             
@@ -312,14 +312,14 @@ def locate_crater(tile, u, v):
 
 def pixel_to_lat_lon(u, v, pixel_scale=100, deg=False):
     
-    x = pixel_scale*u
+    x = pixel_scale*(u - (2_729_100.0 / 100))
     y = pixel_scale*v
     lon = x / MOON_RADIUS_M
     lat = y / MOON_RADIUS_M
     
     if deg:
-        lat = np.degrees(lat)
         lon = np.degrees(lon)
+        lat = np.degrees(lat)
         
     return lat, lon
 
@@ -328,18 +328,15 @@ def lat_lon_to_pixel(lat, lon, pixel_scale=100, deg=False):
         lat = np.radians(lat)
         lon = np.radians(lon)
         
-    y = lat * MOON_RADIUS_M
-    x = -lon * MOON_RADIUS_M
-    
-    u = x / pixel_scale
-    v = y / pixel_scale
+    u = MOON_RADIUS_M * lon / 100 + (2_729_100.0 / 100)
+    v = MOON_RADIUS_M * lat / 100
     
     return u, v
     
 # Example usage:
 if __name__ == "__main__":
     moon = LunarRender('WAC_ROI',debug=False)
-    tile = moon.render(u=80000, v=0, alt=100000)
+    tile = moon.render(u=28153, v=-18194, alt=100000)
     # tile = moon.render_ll(lon=0, lat=80000, alt=75000, deg=True)
     moon.tile2jpg(tile, "lunar_images/tile.jpg")
 

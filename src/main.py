@@ -1,5 +1,5 @@
 from lunar_simulator import LunarSimulator
-from camera import Camera
+from visual_positioning import Camera
 from trajectory_generation import generate_3d_trajectory
 from transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to_mci
 import numpy as np
@@ -42,9 +42,6 @@ if __name__ == "__main__":
     thrust_dir = traj_inertial[:,9:12] # Thrust direction (unit vector)
     thrust_total = thrust_dir * thrust_mag[:, np.newaxis]  # Total thrust vector
 
-    cam = Camera()
-    moon = LunarRender('WAC_ROI',debug=False)
-    moon.verbose = False
     
     # set initial state
     meas_dim = 3  # LLA measurement
@@ -65,9 +62,13 @@ if __name__ == "__main__":
     R = 1e3 * np.eye(meas_dim) 
     ekf.set_measurement_noise(R)
 
+    cam = Camera(r_mat=R)
+    moon = LunarRender('WAC_ROI',debug=False)
+    moon.verbose = False
+
     # Storage for EKF estimates
     ekf_estimates = np.zeros((traj_fixed_LLA.shape[0], state_dim))
-    measurements = np.zeros((traj_fixed_LLA.shape[0], 3))
+    measurements = np.zeros((traj_fixed_LLA.shape[0], meas_dim))
     ekf_estimates[0] = ekf.x.flatten()  # Store initial state estimate
 
     # Store sqrt of diagonal of covariance (sigma) for each time step
@@ -76,20 +77,27 @@ if __name__ == "__main__":
 
     for i in range(1, traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
+        print(f"ALT: {alt}")
+
+        print(f"Trajectory LLA: {traj_fixed_LLA[i,:]}")
 
         if alt <= 0:
             print(f"Reached the surface at step {i}, stopping simulation.")
             ekf_estimates[i] = ekf_estimates[i-1]  # Trim estimates to current step
             break
 
-        tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
-        measurement = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
-        measurements[i] = measurement + np.random.multivariate_normal(np.zeros(meas_dim), 0.01*R)  # Add measurement noise
+        # tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
+        # measurements[i] = cam.get_position_global(tile, alt)
+
+        measurements[i-1], crater_confidence = cam.get_position_global(i-1, alt, log=True, deg=True)
+        print("CONF: ",crater_confidence)
+
+        ekf.update_R(crater_confidence * np.eye(meas_dim))
 
         # get measurements
-        lat_meas = measurements[i,0]
-        lon_meas = measurements[i,1]
-        alt_meas = measurements[i,2]
+        lat_meas = measurements[i-1,0]
+        lon_meas = measurements[i-1,1]
+        alt_meas = measurements[i-1,2]
 
         # convert LLA measurements to inertial coordinates
         # TODO: MAKE SURE THIS t IS CORRECT, MIGHT NEED TO OFFSET by i - 1 also...
@@ -98,7 +106,7 @@ if __name__ == "__main__":
 
         # EKF predict and update
         ekf.predict(time_step,thrust_total[i - 1])
-        ekf.update(r_mci_meas)
+        ekf.update(r_mci_meas[0:3])
 
         # Store EKF estimate
         ekf_estimates[i] = ekf.x.flatten()
@@ -106,7 +114,7 @@ if __name__ == "__main__":
 
         print(f"Step {i}")
         print(f"True State (LLA): lat: {lat} deg, lon: {lon} deg, alt: {alt} m")
-        print(f"Measurement (LLA): lat: {measurement[0]} deg, lon: {measurement[1]} deg, alt: {measurement[2]} m")
+        print(f"Measurement (LLA): lat: {measurements[0]} deg, lon: {measurements[1]} deg, alt: {alt} m")
         print(f"EKF Estimate (state): {ekf.x}")
      
     measurements
@@ -162,26 +170,5 @@ if __name__ == "__main__":
     axs[2].set_xlabel('Time (s)')
     plt.suptitle('EKF Estimation Error in ECI Position Components')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    
-    # lunar_sim = LunarSimulator(
-    #     target,  # target landing site [x,y,z,vx=0,vy=0,vz=0] (m)
-    #     true_state0,  # true initial state of lander [x,y,z,vx,vy,vz] (m)
-    #     mu_state0,  # initial guess state of lander [x,y,z,vx,vy,vz] (m)
-    #     cov0,  # initial covariance of lander state
-    #     q_mat,  # process noise covariance matrix
-    #     r_mat,  # measurement noise covariance matrix
-    #     runtime=100,  # duration of simulation (s)
-    #     dt=0.1,  # delta time for simulation (s)
-    #     LROC_folder="WAC_ROI", # local folder containing LROC images
-    #     fov=45 # simulated fov of camera in degrees
-    # )
-
-    # LunarSimulator.simulate(
-    #     state0, 
-    #     seed=273, 
-    #     noisy=True
-    # )
-
-    # LunarSimulator.plot()
 
 plt.show()

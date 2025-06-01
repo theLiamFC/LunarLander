@@ -121,8 +121,8 @@ if __name__ == "__main__":
             )
 
             print("Estimated Position:\n", camera_pos)
-            # print("Translation Vector:", t)
-            # print("Rotation Matrix:\n", R)
+            print("Translation Vector:", t)
+            print("Rotation Matrix:\n", R)
             print(f"Error:{camera_pos - point}\n")
         except Exception as e:
             print(f"Error: {e}")
