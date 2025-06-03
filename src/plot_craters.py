@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-craters = pd.read_csv('crater_logs.csv', header=0)
+craters = pd.read_csv('crater_logs_noisy.csv', header=0)
 
 crater_count = []
 
@@ -18,8 +18,10 @@ for row in range(craters.shape[0]):
 
 t = np.arange(0,craters.shape[0], 1)
 
-plt.scatter(t, crater_count)
-plt.title('Crater Count vs Time')
-plt.xlabel('Time (s)')
-plt.ylabel('Crater Count')
-plt.show()
+
+if __name__ == "__main__":
+    plt.plot(t, crater_count)
+    plt.title('Crater Count vs Time')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Crater Count')
+    plt.show()
