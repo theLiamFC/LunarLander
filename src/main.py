@@ -105,7 +105,7 @@ if __name__ == "__main__":
     ekf.set_process_noise(Q)
 
     # MEASUREMENT NOISE
-    vbn_noise = 66 * np.eye(3)
+    vbn_noise = 66**2 * np.eye(3)
     imu_noise = 1e-3 * np.eye(3)
     R = np.block([
         [vbn_noise, np.zeros((3,3))],
@@ -142,7 +142,11 @@ if __name__ == "__main__":
         # tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
         LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
         lat_meas, lon_meas, alt_meas = LLA_measure
-        ekf.set_measurement_noise(R*10*mult)
+        R_new = np.block([
+            [mult*vbn_noise, np.zeros((3,3))],
+            [np.zeros((3,3)),imu_noise]
+        ])        
+        ekf.set_measurement_noise(R_new)
 
         # IMU MEASUREMENTS
         thrust_mag_noisy = traj_inertial[i-1,THRUST_MAG_NOISY_IDX]

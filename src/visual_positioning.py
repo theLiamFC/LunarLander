@@ -14,6 +14,8 @@ NOTES:
 
 """
 
+MOON_RADIUS_M = 1_737_400 # radius of moon in meters
+
 class Camera():
     def __init__(self, r_mat, K=None):
         self.r_mat = r_mat / 100
@@ -55,13 +57,13 @@ class Camera():
             lon = np.float64(self.craters[tile, 1])
             alt = np.float64(self.craters[tile, 2])
             mult = self.craters[tile,3]
-            if np.float64(mult) == 100: mult = 1e5 
-            #else: mult *= 0.5
+            if np.float64(mult) == 100: mult = 5 
+            else: mult *= 1
             mult = np.float64(mult)
 
             print(f"MULT IS: {mult}")
             
-            lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat)
+            lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat / MOON_RADIUS_M)
         else:
             predictions = self.detector.detect_craters(tile)
             mult = self.noise_multiplier(predictions, 0.5)
