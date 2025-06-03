@@ -55,9 +55,11 @@ class Camera():
             lon = np.float64(self.craters[tile, 1])
             alt = np.float64(self.craters[tile, 2])
             mult = self.craters[tile,3]
-            if np.float64(mult) == 100: mult = 5 
+            if np.float64(mult) == 100: mult = 1e5 
             else: mult *= 0.5
             mult = np.float64(mult)
+
+            print(f"MULT IS: {mult}")
             
             lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat)
         else:

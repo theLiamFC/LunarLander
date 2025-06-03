@@ -104,7 +104,7 @@ if __name__ == "__main__":
     ekf.set_process_noise(Q)
 
     # MEASUREMENT NOISE
-    vbn_noise = 1e2 * np.eye(3)
+    vbn_noise = 1e-2 * np.eye(3)
     imu_noise = 1e-3 * np.eye(3)
     R = np.block([
         [vbn_noise, np.zeros((3,3))],
