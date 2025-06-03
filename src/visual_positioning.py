@@ -56,7 +56,7 @@ class Camera():
             alt = np.float64(self.craters[tile, 2])
             mult = self.craters[tile,3]
             if np.float64(mult) == 100: mult = 1e5 
-            else: mult *= 0.5
+            #else: mult *= 0.5
             mult = np.float64(mult)
 
             print(f"MULT IS: {mult}")

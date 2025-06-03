@@ -8,6 +8,7 @@ from EKF import EKF
 from EKF_fusion import EKF_fusion
 from lunar_render import LunarRender
 import matplotlib.pyplot as plt
+from plot_craters import crater_count
 
 # TRAJECTORY INERTIAL INDEXING
 TIME_IDX = 0
@@ -104,7 +105,7 @@ if __name__ == "__main__":
     ekf.set_process_noise(Q)
 
     # MEASUREMENT NOISE
-    vbn_noise = 1e-2 * np.eye(3)
+    vbn_noise = 66 * np.eye(3)
     imu_noise = 1e-3 * np.eye(3)
     R = np.block([
         [vbn_noise, np.zeros((3,3))],
@@ -114,7 +115,7 @@ if __name__ == "__main__":
 
     # INIT LUNAR RENDER
     cam = Camera(r_mat=vbn_noise)
-    moon = LunarRender('WAC_ROI',debug=False)
+    moon = LunarRender('../WAC_ROI',debug=False)
     moon.verbose = False
 
     # ALLOCATE EKF ESTIMATES HISTORY
@@ -138,7 +139,7 @@ if __name__ == "__main__":
         if alt <= 0.0: break
 
         # VISION BASED NAVIGATION MEASUREMENTS
-        tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
+        # tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
         LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
         lat_meas, lon_meas, alt_meas = LLA_measure
         ekf.set_measurement_noise(R*10*mult)
@@ -212,7 +213,7 @@ if __name__ == "__main__":
     error = est_pos[:-1] - true_pos  # shape: (N, 3)
     
     # Plot estimation error for each component
-    fig, axs = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    fig, axs = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
     labels = ['x error (m)', 'y error (m)', 'z error (m)']
     
     for i in range(3):
@@ -221,6 +222,11 @@ if __name__ == "__main__":
         axs[i].grid(True)
     
     axs[2].set_xlabel('Time (s)')
+    axs[3].plot(time, crater_count)
+    axs[3].set_xlabel('Time (s)')
+    axs[3].set_ylabel('Crater Count')
+    axs[3].grid(True)
+    
     plt.suptitle('EKF Estimation Error in ECI Position Components')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
