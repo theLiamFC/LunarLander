@@ -102,17 +102,20 @@ def plot_zoomed_trajectory_view(traj_3d, start_LLA, target_LLA):
     plt.show()
 
 def plot_descent_trajectory(traj):
-    # Extract values based on updated column structure
+    # Extract data from updated trajectory format
     t = traj[:, 0]
-    x, y, z = traj[:, 1], traj[:, 2], traj[:, 3]
-    vx, vy, vz = traj[:, 4], traj[:, 5], traj[:, 6]
+    r = traj[:, 1:4]
+    v = traj[:, 4:7]
     h = traj[:, 7]
-    thrust = traj[:, 8]
-    phase = traj[:, -1]
+    acc = traj[:, 8:11]
+    thrust_mag_nominal = traj[:, 11]
+    thrust_dir_nominal = traj[:, 12:15]
+    thrust_mag_noisy = traj[:, 15]
+    thrust_dir_noisy = traj[:, 16:19]
+    phase = traj[:, 19]
 
-    v_mag = np.linalg.norm(traj[:, 4:7], axis=1)
+    v_mag = np.linalg.norm(v, axis=1)
 
-    # Plotting
     fig, axs = plt.subplots(1, 3, figsize=(18, 6))
 
     # Altitude vs Time
@@ -124,23 +127,26 @@ def plot_descent_trajectory(traj):
 
     # Velocity profiles
     axs[1].plot(t, v_mag, label='|v|')
-    axs[1].plot(t, vx, '--', label='vx')
-    axs[1].plot(t, vy, '--', label='vy')
-    axs[1].plot(t, vz, '--', label='vz')
+    axs[1].plot(t, v[:, 0], '--', label='vx')
+    axs[1].plot(t, v[:, 1], '--', label='vy')
+    axs[1].plot(t, v[:, 2], '--', label='vz')
     axs[1].set_xlabel('Time [s]')
     axs[1].set_ylabel('Velocity [m/s]')
     axs[1].set_title('Velocity Components')
     axs[1].legend()
     axs[1].grid(True)
 
-    # Thrust vs Time with phases
-    axs[2].plot(t, thrust, label='Thrust [N]')
-    axs[2].fill_between(t, 0, thrust, where=(phase == 1), alpha=0.2, label='Phase 1')
-    axs[2].fill_between(t, 0, thrust, where=(phase == 2), alpha=0.2, label='Phase 2')
-    axs[2].fill_between(t, 0, thrust, where=(phase == 3), alpha=0.2, label='Phase 3')
+    # Thrust: Nominal vs Noisy
+    axs[2].plot(t, thrust_mag_nominal, label='Nominal Thrust [N]', linewidth=2)
+    axs[2].plot(t, thrust_mag_noisy, '--', label='Noisy Thrust [N]', linewidth=1.5)
+
+    axs[2].fill_between(t, 0, thrust_mag_noisy, where=(phase == 1), alpha=0.15, label='Phase 1')
+    axs[2].fill_between(t, 0, thrust_mag_noisy, where=(phase == 2), alpha=0.15, label='Phase 2')
+    axs[2].fill_between(t, 0, thrust_mag_noisy, where=(phase == 3), alpha=0.15, label='Phase 3')
+
     axs[2].set_xlabel('Time [s]')
     axs[2].set_ylabel('Thrust [N]')
-    axs[2].set_title('Thrust vs Time (by Phase)')
+    axs[2].set_title('Thrust vs Time (Nominal and Noisy)')
     axs[2].legend()
     axs[2].grid(True)
 
@@ -168,5 +174,6 @@ print(f"Landing LLA: {landing_LLA}")
 #    start_LLA=start_LLA,
 #    landing_LLA=landing_LLA
 #)
+
 
 plot_descent_trajectory(traj_inertial)

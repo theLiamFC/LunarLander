@@ -63,7 +63,8 @@ class EKF:
     def jacobian_C(self):
         C = np.zeros((3, 6))
         C[0:3, 0:3] = np.eye(3)
-        return C
+        
+        return C #np.hstack([np.eye(2), np.zeros((2,4))])
 
     def predict(self, dt, u):
         # Propagate state (Euler)
@@ -92,3 +93,6 @@ class EKF:
         # Update mean and covariance
         self.x = self.x + K @ y_residual
         self.sigma = self.sigma - K @ C @ self.sigma
+
+    def update_R(self, R):
+        self.R = R

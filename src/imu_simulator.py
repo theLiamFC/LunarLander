@@ -9,15 +9,11 @@ class IMUSimulator:
         self.gravity_surface = 1.625  # gravity on the surface of the Moon in m/s²
         
         # Error parameters
-        self.bias = [0.01, -0.008, 0.015]  # Bias for x, y, z (m/s²)
-        self.cross_coupling = np.array([
-            [1.0, 0.02, -0.01],  # Cross-coupling matrix
-            [0.01, 1.0, 0.03],   # Non-zero off-diagonals represent
-            [-0.02, 0.01, 1.0]   # non-orthogonality between axes
-        ])
+        self.bias = [0.001, -0.001, 0.002]  # Bias for x, y, z (m/s²)
         self.noise_std = 0.2  # Base noise level
-        self.bias_instability_std = 0.01  # Standard deviation for bias instability noise
+        self.bias_instability_std = 0.005  # Standard deviation for bias instability noise
         self.bias_instability = np.array([0.0, 0.0, 0.0])  # Initial bias instability
+
         self.saturation_limit = 3.0  # Saturation limit for acceleration (m/s²)
 
     def gravity(self, alt):
@@ -95,16 +91,14 @@ class IMUSimulator:
         gravity_vector = [0, 0, -self.gravity(alt)]
         ideal_acc = [f / self.mass + g for f, g in zip(force, gravity_vector)]
         
-        # 2. Apply cross-coupling/non-orthogonality
-        acc_with_cross = np.dot(self.cross_coupling, ideal_acc)
-        
         # 3. Update and apply bias instability
         bias_inst = self.update_bias_instability()
         
-        # 4. Apply bias, bias instability, and noise
+        # 4. Apply noise
         acc_with_bias = [
             a + b + bi + random.gauss(0, self.noise_std) 
-            for a, b, bi in zip(acc_with_cross, self.bias, bias_inst)
+            for a, b, bi in zip(ideal_acc, self.bias, bias_inst)
+            for a, b, bi in zip(ideal_acc, self.bias, bias_inst)
         ]
         
         # 6. Apply saturation

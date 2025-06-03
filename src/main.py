@@ -1,5 +1,4 @@
 from lunar_simulator import LunarSimulator
-# from camera import Camera
 from visual_positioning import Camera
 from trajectory_generation import generate_3d_trajectory
 from transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to_mci
@@ -80,11 +79,12 @@ if __name__ == "__main__":
     ekf.set_initial_state(x0, sigma0)
     Q = 1*np.eye(state_dim)
     ekf.set_process_noise(Q)
-    R = 1000 * np.eye(meas_dim) 
+    R = 1e3 * np.eye(meas_dim) 
     ekf.set_measurement_noise(R)
 
     cam = Camera(r_mat=R/100)
     moon = LunarRender('WAC_ROI',debug=False)
+
     moon.verbose = False
 
     # Storage for EKF estimates
@@ -98,6 +98,7 @@ if __name__ == "__main__":
 
     for i in range(1, traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
+
         tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
         # lat_meas,lon_meas,alt_meas  = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
         LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
@@ -116,7 +117,7 @@ if __name__ == "__main__":
         print(f"NOISE: {np.random.multivariate_normal(np.zeros(6),R)[3:7]}")
         a_mci_meas = a + np.random.multivariate_normal(np.zeros(6),R)[3:7]
         # TODO: MAKE SURE THIS t IS CORRECT, MIGHT NEED TO OFFSET by i - 1 also...
-        t = traj_inertial[i, 0]  # time in seconds
+        t = traj_inertial[i-1, 0]  # time in seconds
         r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
         # a_mci_meas = traj_inertial  # FILL IN IMU MEASUREMENT HERE (3,1) acceleration in MCI frame
 
@@ -154,17 +155,18 @@ if __name__ == "__main__":
         idx_100s = np.where(time <= 1400)[0]
         axs[i].plot(time[idx_100s], true_pos[idx_100s, i], label='True', color='black')
         axs[i].plot(time[idx_100s], est_pos[idx_100s, i], label='EKF Estimate', color='red', linestyle='--')
+
         # 1-sigma and 2-sigma bounds
         axs[i].fill_between(
-            time[idx_100s],
-            est_pos[idx_100s, i] - sigma_sqrt[idx_100s, i],
-            est_pos[idx_100s, i] + sigma_sqrt[idx_100s, i],
+            time,
+            est_pos[:, i] - sigma_sqrt[:, i],
+            est_pos[:, i] + sigma_sqrt[:, i],
             color='orange', alpha=0.3, label='1σ'
         )
         axs[i].fill_between(
-            time[idx_100s],
-            est_pos[idx_100s, i] - 2*sigma_sqrt[idx_100s, i],
-            est_pos[idx_100s, i] + 2*sigma_sqrt[idx_100s, i],
+            time,
+            est_pos[:, i] - 2*sigma_sqrt[:, i],
+            est_pos[:, i] + 2*sigma_sqrt[:, i],
             color='yellow', alpha=0.2, label='2σ'
         )
         axs[i].set_ylabel(labels[i])
@@ -190,26 +192,5 @@ if __name__ == "__main__":
     axs[2].set_xlabel('Time (s)')
     plt.suptitle('EKF Estimation Error in ECI Position Components')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    
-    # lunar_sim = LunarSimulator(
-    #     target,  # target landing site [x,y,z,vx=0,vy=0,vz=0] (m)
-    #     true_state0,  # true initial state of lander [x,y,z,vx,vy,vz] (m)
-    #     mu_state0,  # initial guess state of lander [x,y,z,vx,vy,vz] (m)
-    #     cov0,  # initial covariance of lander state
-    #     q_mat,  # process noise covariance matrix
-    #     r_mat,  # measurement noise covariance matrix
-    #     runtime=100,  # duration of simulation (s)
-    #     dt=0.1,  # delta time for simulation (s)
-    #     LROC_folder="WAC_ROI", # local folder containing LROC images
-    #     fov=45 # simulated fov of camera in degrees
-    # )
-
-    # LunarSimulator.simulate(
-    #     state0, 
-    #     seed=273, 
-    #     noisy=True
-    # )
-
-    # LunarSimulator.plot()
 
 plt.show()
