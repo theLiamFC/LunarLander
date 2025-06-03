@@ -1,5 +1,6 @@
 from lunar_simulator import LunarSimulator
-from camera import Camera
+# from camera import Camera
+from visual_positioning import Camera
 from trajectory_generation import generate_3d_trajectory
 from transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to_mci
 import numpy as np
@@ -43,9 +44,6 @@ if __name__ == "__main__":
     thrust_dir = traj_inertial[:,9:12] # Thrust direction (unit vector)
     thrust_total = thrust_dir * thrust_mag[:, np.newaxis]  # Total thrust vector
 
-    cam = Camera()
-    moon = LunarRender('WAC_ROI',debug=False)
-    moon.verbose = False
     
     # set initial state
     meas_dim = 6  # LLA measurement
@@ -82,8 +80,12 @@ if __name__ == "__main__":
     ekf.set_initial_state(x0, sigma0)
     Q = 1*np.eye(state_dim)
     ekf.set_process_noise(Q)
-    R = 10000 * np.eye(meas_dim) 
+    R = 1000 * np.eye(meas_dim) 
     ekf.set_measurement_noise(R)
+
+    cam = Camera(r_mat=R/100)
+    moon = LunarRender('WAC_ROI',debug=False)
+    moon.verbose = False
 
     # Storage for EKF estimates
     ekf_estimates = np.zeros((traj_fixed_LLA.shape[0], state_dim))
@@ -97,7 +99,12 @@ if __name__ == "__main__":
     for i in range(1, traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
         tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
-        lat_meas,lon_meas,alt_meas  = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
+        # lat_meas,lon_meas,alt_meas  = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
+        LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
+
+        lat_meas, lon_meas, alt_meas = LLA_measure
+
+        ekf.set_measurement_noise(R*10*mult)
 
         u = thrust_total[i - 1]
         r = traj_inertial[i][1:4].flatten()
@@ -107,13 +114,13 @@ if __name__ == "__main__":
         print(f"ACCEL: {a}")
 
         print(f"NOISE: {np.random.multivariate_normal(np.zeros(6),R)[3:7]}")
-        a_mci_meas = a
+        a_mci_meas = a + np.random.multivariate_normal(np.zeros(6),R)[3:7]
         # TODO: MAKE SURE THIS t IS CORRECT, MIGHT NEED TO OFFSET by i - 1 also...
         t = traj_inertial[i, 0]  # time in seconds
         r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
         # a_mci_meas = traj_inertial  # FILL IN IMU MEASUREMENT HERE (3,1) acceleration in MCI frame
 
-        full_meas = np.hstack((r_mci_meas, a_mci_meas))  + np.random.multivariate_normal(np.zeros(6),R)# Combine position and acceleration measurements
+        full_meas = np.hstack((r_mci_meas, a_mci_meas)) # Combine position and acceleration measurements
         measurements[i] = full_meas
 
         # convert LLA measurements to inertial coordinates
@@ -130,8 +137,6 @@ if __name__ == "__main__":
         print(f"True State (LLA): lat: {lat} deg, lon: {lon} deg, alt: {alt} m")
         print(f"Measurement (LLA): lat: {lat_meas} deg, lon: {lon_meas} deg, alt: {alt_meas} m")
         print(f"EKF Estimate (state): {ekf.x}")
-     
-    measurements
 
     # Extract time and true ECI positions from traj_inertial
     time = traj_inertial[:, 0]
