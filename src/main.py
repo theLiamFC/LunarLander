@@ -9,7 +9,6 @@ from EKF_fusion import EKF_fusion
 from lunar_render import LunarRender
 import matplotlib.pyplot as plt
 
-
 if __name__ == "__main__":
     start_LLA = (0.0, 0.0, 100000)  # Latitude, Longitude, Altitude in meters
 
@@ -23,12 +22,31 @@ if __name__ == "__main__":
     # Lat (deg), long (deg), altitude (meters)
     traj_fixed_LLA = mcmf_traj_to_lla(traj_fixed)
     #print(traj_fixed_LLA)
+
+    traj_all = np.hstack([traj_fixed_LLA, traj_inertial])
+
+    print(traj_all.shape)
  
     # Create a DataFrame
-    df_lla = pd.DataFrame(traj_fixed_LLA, columns=["Latitude_deg", "Longitude_deg", "Altitude_m"])
+    df_lla = pd.DataFrame(
+        traj_all, 
+        columns=[
+            "Latitude_deg", "Longitude_deg", "Altitude_m",
+            "Time",
+            "X_Inertial", "Y_Inertial", "Z_Inertial",
+            "VX_Inertial", "VY_Inertial", "VZ_Inertial",
+            "Altitude_m",
+            "X_Accel", "Y_Accel", "Z_Accel",
+            "Thrust_Mag",
+            "Thrust_Dir_x", "Thrust_Dir_Y", "Thrust_Dir_Z",
+            "Thrust_Mag_N",
+            "Thrust_Dir_x_N", "Thrust_Dir_Y_N", "Thrust_Dir_Z_N",
+            "Phase"
+        ]
+    )
 
     # Save to CSV
-    df_lla.to_csv("traj_fixed_LLA.csv", index=False)
+    df_lla.to_csv("traj_all.csv", index=False)
 
     # Assuming traj is a NumPy array with shape (N, 13+)
     initial_row = traj_inertial[0]
@@ -96,8 +114,14 @@ if __name__ == "__main__":
     sigma_sqrt = np.zeros((traj_fixed_LLA.shape[0], state_dim))
     sigma_sqrt[0] = np.sqrt(np.diag(ekf.sigma))
 
+    # traj_indexing = traj_fixed_LLA.copy()
+    # traj_fixed_LLA = traj_fixed_LLA[traj_indexing[:,2] >= 0]
+    # traj_inertial = traj_inertial[traj_indexing[:,2] >= 0]
+
     for i in range(1, traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
+
+        if alt <= 0.0: break
 
         tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
         # lat_meas,lon_meas,alt_meas  = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
@@ -152,9 +176,8 @@ if __name__ == "__main__":
 
     for i in range(3):
         # Plot only up to 100 seconds
-        idx_100s = np.where(time <= 1400)[0]
-        axs[i].plot(time[idx_100s], true_pos[idx_100s, i], label='True', color='black')
-        axs[i].plot(time[idx_100s], est_pos[idx_100s, i], label='EKF Estimate', color='red', linestyle='--')
+        axs[i].plot(time[:], true_pos[:, i], label='True', color='black')
+        axs[i].plot(time[:], est_pos[:, i], label='EKF Estimate', color='red', linestyle='--')
 
         # 1-sigma and 2-sigma bounds
         axs[i].fill_between(

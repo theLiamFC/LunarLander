@@ -47,7 +47,7 @@ class Camera():
         mult = self.noise_multiplier(predictions, thresh) 
         return np.random.multivariate_normal(np.zeros(self.meas_dim), mult*self.r_mat).reshape(self.meas_dim,1)
             
-    def get_position_global(self, tile, alt, log=True, deg=True):    
+    def get_position_global(self, tile, alt, log=True, deg=True, scale=7):    
         #tile is either the image generated tile or its the tile index number from the trajectory list
         
         if log:

@@ -30,10 +30,10 @@ if not os.path.exists(csv_filename):
             'Crater10_U', 'Crater10_V','Crater10_Conf',
         ])
 
-trajectory = np.genfromtxt('traj_fixed_LLA.csv',delimiter=',',skip_header=True)
+trajectory = np.genfromtxt('traj_all.csv',delimiter=',',skip_header=True)
 
 for i, point in enumerate(trajectory):
-    lat, lon, alt = point
+    lat, lon, alt  = point[0:3]
     print(f"Processing Image #{i}")
 
     if alt <= 0:
