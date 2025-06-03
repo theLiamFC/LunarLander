@@ -63,7 +63,7 @@ if __name__ == "__main__":
     ekf.set_measurement_noise(R)
 
     cam = Camera(r_mat=R)
-    moon = LunarRender('WAC_ROI',debug=False)
+    moon = LunarRender('../WAC_ROI',debug=False)
     moon.verbose = False
 
     # Storage for EKF estimates

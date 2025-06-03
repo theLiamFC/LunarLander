@@ -35,9 +35,9 @@ class Camera():
             for crater in predictions:
                 if crater[-1] > thresh:
                     num_valid+=1
-                    running_total += 1 - crater[-1]
+                    running_total += 1 - crater[-1] #exp(1-p_1)*exp(1-p_2)*...
             if num_valid > 0:
-                mult = running_total / num_valid
+                mult = running_total / num_valid**2
         return mult
     
     def noise_multiplier_log(self, img_num):
