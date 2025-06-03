@@ -76,7 +76,7 @@ class EKF_fusion:
         a_control = u / self.mass  # u is a force vector in N
 
         # Total predicted acceleration
-        a_pred = a_control + a_gravity
+        a_pred = a_control #+ a_gravity
 
         # Output: [position; acceleration]
         return np.vstack((r.reshape((3,1)), a_pred.reshape((3,1))))
