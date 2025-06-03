@@ -20,7 +20,7 @@ class Camera():
         self.meas_dim = self.r_mat.shape[0]
         self.orb = cv2.ORB_create()
         self.detector = CraterDetector()
-        self.crater_log = "crater_logs.csv"
+        self.crater_log = "crater_logs_noisy.csv"
         self.df = pd.read_csv(self.crater_log, header=0)
         self.craters = self.df.values
         print(self.df)
@@ -51,12 +51,15 @@ class Camera():
         #tile is either the image generated tile or its the tile index number from the trajectory list
         
         if log:
-            lat = self.craters[tile, 0]
-            lon = self.craters[tile, 1]
+            lat = np.float64(self.craters[tile, 0])
+            lon = np.float64(self.craters[tile, 1])
+            alt = np.float64(self.craters[tile, 2])
             mult = self.craters[tile,3]
-            if np.float64(mult) == 0.0: mult = 10
+            if np.float64(mult) == 100: mult = 5 
+            else: mult *= 0.5
+            mult = np.float64(mult)
             
-            lat, lon = (np.array([lat, lon]).reshape(2,1) + np.random.multivariate_normal(np.zeros(self.r_mat.shape[0]), mult * self.r_mat).reshape(-1,1)[0:2]).flatten()
+            lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat)
         else:
             predictions = self.detector.detect_craters(tile)
             mult = self.noise_multiplier(predictions, 0.5)
