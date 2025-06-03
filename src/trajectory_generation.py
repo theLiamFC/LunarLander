@@ -45,6 +45,7 @@ def generate_3d_trajectory(
             v_error = v_target - v
             thrust_dir_cmd = v_error / (np.linalg.norm(v_error) + 1e-6)
             phase = 2
+
         else:
             v_radial = np.dot(v, r_hat)
             v_error = v_terminal - v_radial

@@ -5,6 +5,7 @@ from transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to
 import numpy as np
 import pandas as pd
 from EKF import EKF
+from EKF_fusion import EKF_fusion
 from lunar_render import LunarRender
 import matplotlib.pyplot as plt
 
@@ -44,26 +45,46 @@ if __name__ == "__main__":
 
     
     # set initial state
-    meas_dim = 3  # LLA measurement
+    meas_dim = 6  # LLA measurement
     x0 = np.hstack((r0_inertial, v0_inertial)) # [x, y, z, vx, vy, vz]
     state_dim = x0.size
-    sigma_std = np.eye(state_dim)
+    sigma_std = 1000 * np.eye(state_dim)
     estimate_noise = np.linalg.cholesky(sigma_std) @ np.random.randn(6) 
 
     # Add noise to the initial state
     x0 = x0 + estimate_noise 
     sigma0 = 1000 * sigma_std
 
-    # initialize EKF
-    ekf = EKF(state_dim, meas_dim, mu = 4.9048695e12)
+    # # initialize EKF
+    # ekf = EKF(state_dim, meas_dim, mu = 4.9048695e12)
+    # ekf.set_initial_state(x0, sigma0)
+    # Q = 1*np.eye(state_dim)
+    # ekf.set_process_noise(Q)
+    # R = 1000 * np.eye(meas_dim) 
+    # ekf.set_measurement_noise(R)
+
+    # # Storage for EKF estimates
+    # ekf_estimates = np.zeros((traj_fixed_LLA.shape[0], state_dim))
+    # measurements = np.zeros((traj_fixed_LLA.shape[0], 3))
+    # ekf_estimates[0] = ekf.x.flatten()  # Store initial state estimate
+
+    # # Store sqrt of diagonal of covariance (sigma) for each time step
+    # sigma_sqrt = np.zeros((traj_fixed_LLA.shape[0], state_dim))
+    # sigma_sqrt[0] = np.sqrt(np.diag(ekf.sigma))
+
+    # initialize EKF Fusion
+    mu = 4.9048695e12
+    mass = 2000
+    ekf = EKF_fusion(state_dim, meas_dim, mu, mass)
     ekf.set_initial_state(x0, sigma0)
     Q = 1*np.eye(state_dim)
     ekf.set_process_noise(Q)
     R = 1e3 * np.eye(meas_dim) 
     ekf.set_measurement_noise(R)
 
-    cam = Camera(r_mat=R)
-    moon = LunarRender('../WAC_ROI',debug=False)
+    cam = Camera(r_mat=R/100)
+    moon = LunarRender('WAC_ROI',debug=False)
+
     moon.verbose = False
 
     # Storage for EKF estimates
@@ -77,36 +98,37 @@ if __name__ == "__main__":
 
     for i in range(1, traj_fixed_LLA.shape[0]):
         lat, lon, alt = traj_fixed_LLA[i,:]
-        print(f"ALT: {alt}")
 
-        print(f"Trajectory LLA: {traj_fixed_LLA[i,:]}")
+        tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
+        # lat_meas,lon_meas,alt_meas  = cam.get_position_global_hack(tile, alt) # ouputs lat, lon, altitide (deg, deg, km) of camera position in world frame
+        LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
 
-        if alt <= 0:
-            print(f"Reached the surface at step {i}, stopping simulation.")
-            ekf_estimates[i] = ekf_estimates[i-1]  # Trim estimates to current step
-            break
+        lat_meas, lon_meas, alt_meas = LLA_measure
 
-        # tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
-        # measurements[i] = cam.get_position_global(tile, alt)
+        ekf.set_measurement_noise(R*10*mult)
 
-        measurements[i-1], crater_confidence = cam.get_position_global(i-1, alt, log=True, deg=True)
-        print("CONF: ",crater_confidence)
+        u = thrust_total[i - 1]
+        r = traj_inertial[i][1:4].flatten()
+        v = traj_inertial[i][4:7].flatten()
+        norm_r = np.linalg.norm(r)
+        a = (-mu * r / norm_r**3) + (u / mass)  # u is thrust
+        print(f"ACCEL: {a}")
 
-        ekf.update_R(crater_confidence * np.eye(meas_dim))
-
-        # get measurements
-        lat_meas = measurements[i-1,0]
-        lon_meas = measurements[i-1,1]
-        alt_meas = measurements[i-1,2]
-
-        # convert LLA measurements to inertial coordinates
+        print(f"NOISE: {np.random.multivariate_normal(np.zeros(6),R)[3:7]}")
+        a_mci_meas = a + np.random.multivariate_normal(np.zeros(6),R)[3:7]
         # TODO: MAKE SURE THIS t IS CORRECT, MIGHT NEED TO OFFSET by i - 1 also...
         t = traj_inertial[i-1, 0]  # time in seconds
         r_mci_meas = lla_to_mci(lat_meas, lon_meas, alt_meas, t)
+        # a_mci_meas = traj_inertial  # FILL IN IMU MEASUREMENT HERE (3,1) acceleration in MCI frame
+
+        full_meas = np.hstack((r_mci_meas, a_mci_meas)) # Combine position and acceleration measurements
+        measurements[i] = full_meas
+
+        # convert LLA measurements to inertial coordinates
 
         # EKF predict and update
         ekf.predict(time_step,thrust_total[i - 1])
-        ekf.update(r_mci_meas[0:3])
+        ekf.update(full_meas,thrust_total[i - 1])
 
         # Store EKF estimate
         ekf_estimates[i] = ekf.x.flatten()
@@ -114,10 +136,8 @@ if __name__ == "__main__":
 
         print(f"Step {i}")
         print(f"True State (LLA): lat: {lat} deg, lon: {lon} deg, alt: {alt} m")
-        print(f"Measurement (LLA): lat: {measurements[0]} deg, lon: {measurements[1]} deg, alt: {alt} m")
+        print(f"Measurement (LLA): lat: {lat_meas} deg, lon: {lon_meas} deg, alt: {alt_meas} m")
         print(f"EKF Estimate (state): {ekf.x}")
-     
-    measurements
 
     # Extract time and true ECI positions from traj_inertial
     time = traj_inertial[:, 0]
@@ -132,8 +152,10 @@ if __name__ == "__main__":
 
     for i in range(3):
         # Plot only up to 100 seconds
-        axs[i].plot(time, true_pos[:, i], label='True', color='black')
-        axs[i].plot(time, est_pos[:, i], label='EKF Estimate', color='red', linestyle='--')
+        idx_100s = np.where(time <= 1400)[0]
+        axs[i].plot(time[idx_100s], true_pos[idx_100s, i], label='True', color='black')
+        axs[i].plot(time[idx_100s], est_pos[idx_100s, i], label='EKF Estimate', color='red', linestyle='--')
+
         # 1-sigma and 2-sigma bounds
         axs[i].fill_between(
             time,

@@ -169,10 +169,11 @@ landing_lat,landing_lon,altitude_meters = mcmf2lla(landing_xyz)
 landing_LLA = (landing_lat,landing_lon,altitude_meters)  # Target landing site in LLA (degrees, degrees, meters)
 print(f"Landing LLA: {landing_LLA}")
 
-# plot_moon_global_view_with_trajectory(
-#     traj_fixed_m=traj_fixed,
-#     start_LLA=start_LLA,
-#     landing_LLA=landing_LLA
-# )
+#plot_moon_global_view_with_trajectory(
+#    traj_fixed_m=traj_fixed,
+#    start_LLA=start_LLA,
+#    landing_LLA=landing_LLA
+#)
+
 
 plot_descent_trajectory(traj_inertial)
