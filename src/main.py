@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # INIT LUNAR RENDER
     cam = Camera(r_mat=vbn_noise)
     cam.crater_log = crater_log_fname
-    moon = LunarRender('WAC_ROI',debug=False)
+    moon = LunarRender('../WAC_ROI',debug=False)
     moon.verbose = False
 
     # INIT IMU
@@ -271,14 +271,27 @@ if __name__ == "__main__":
         axs[i].plot(time[:end_time], error[:end_time, i], color='blue')
         axs[i].set_ylabel(labels[i])
         axs[i].grid(True)
+        if i == 0:
+            axs[i].set_title('EKF Error in X Position')
+        if i == 1:
+            axs[i].set_title('EKF Error in Y Position')
+        if i == 2:
+            axs[i].set_title('EKF Error in Z Position')
     
     axs[2].set_xlabel('Time (s)')
     axs[3].plot(time[:end_time], crater_count[:end_time])
     axs[3].set_xlabel('Time (s)')
     axs[3].set_ylabel('Crater Count')
     axs[3].grid(True)
+    axs[3].set_title('Crater Count vs Time')
     
     plt.suptitle(f'EKF Estimation Error in ECI Position Components ({sim_mode_str})')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
+    
+    print(f"Min ERROR: {np.min(np.abs(error[:end_time,:]),axis=0)}")
+    print(f"MAX ERROR: {np.max(np.abs(error[:end_time,:]),axis=0)}")
+    print(f"Average ERROR: {np.mean(np.abs(error[:end_time,:]), axis=0)}")
+
+    
 
 plt.show()
