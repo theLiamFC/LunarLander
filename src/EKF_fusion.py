@@ -104,14 +104,14 @@ class EKF_fusion:
         
         jacobian = -mu * ((I / r_norm**3) - (3 * outer) / r_norm**5)
         return jacobian
-
-    def jacobian_C(self,x):
-        r = x[0:3]
+    
+    def jacobian_C(self, x):
         C_top = np.hstack((np.eye(3), np.zeros((3,3))))
-        C_bottom_left = self.dadr_dr(r, self.mu)
-        C_bottom_right = np.zeros((3,3))
-        C = np.vstack((C_top, np.hstack((C_bottom_left, C_bottom_right))))
+        # Acceleration measurement only depends on control input (not state)
+        C_bottom = np.zeros((3,6))  # Both position and velocity derivatives are zero
+        C = np.vstack((C_top, C_bottom))
         return C
+
 
     def predict(self, dt, u):
         # Propagate state (Euler)

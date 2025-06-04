@@ -5,7 +5,7 @@ def generate_3d_trajectory(
     start_lat, start_lon, start_alt,
     v0_local=np.array([0.0, 1600.0, 0.0]),
     dt=1.0, T_max=7000, m=2000, theta0=0.0,
-    sigma_mag=0.01, sigma_dir=0.001, random_seed=273
+    sigma_mag=0.05, sigma_dir=0.05, random_seed=273
 ):
     np.random.seed(random_seed)
     

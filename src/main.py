@@ -8,7 +8,7 @@ from EKF import EKF
 from EKF_fusion import EKF_fusion
 from lunar_render import LunarRender
 import matplotlib.pyplot as plt
-from plot_craters import crater_count
+from plot_craters import get_crater_count
 
 # TRAJECTORY INERTIAL INDEXING
 TIME_IDX = 0
@@ -33,6 +33,10 @@ THRUST_DIR_NOISY_Z_IDX = 18    # thrust_dir_noisy[2]
 PHASE_IDX = 19     # phase
 
 if __name__ == "__main__":
+    ############################################################
+    # RUN TRAJECTORY
+    ############################################################
+
     start_LLA = (0.0, 0.0, 100000)  # Latitude, Longitude, Altitude in meters
 
     # traj.append([t, *r, *v, h, thrust_mag, *thrust_dir, phase])
@@ -49,7 +53,7 @@ if __name__ == "__main__":
     traj_all = np.hstack([traj_fixed_LLA, traj_inertial])
 
     print(traj_all.shape)
- 
+
     # Create a DataFrame
     df_lla = pd.DataFrame(
         traj_all, 
@@ -84,14 +88,37 @@ if __name__ == "__main__":
     thrust_dir = traj_inertial[:,9:12] # Thrust direction (unit vector)
     thrust_total = thrust_dir * thrust_mag[:, np.newaxis]  # Total thrust vector
 
-    
+    ############################################################
+    # SIMULATION PARAMETERS
+    ############################################################
+
+    # CHOOSE VBN / IMU COMBINATION:
+    SET_SIM = [True, True] # [VBN, IMU]             <==== EDIT THIS FOR TURNING OFF/ON VBN & IMU
+    sim_mode_str = ""
+    if SET_SIM[0] and SET_SIM[1]: sim_mode_str = "VBN & IMU"
+    elif SET_SIM[0]: sim_mode_str = "VBN"
+    elif SET_SIM[1]: sim_mode_str = "IMU"
+
+    # CHOOSE TRAJECTORY NOISE LEVEL
+    SET_NOISE = 5 # 1, 5                            <==== EDIT THIS FOR TRAJECTORY NOISE
+    crater_log_fname = ""
+    if SET_NOISE == 5:
+        crater_log_fname = "crater_logs_noisy_01.csv"
+    elif SET_NOISE == 1:
+        crater_log_fname = "crater_logs_noisy_05.csv"
+    crater_count = get_crater_count(crater_log_fname)
+
+    ############################################################
+    # RUN SIMULATION
+    ############################################################
+
     # INITIAL STATE
     meas_dim = 6  # LLA measurement
     x0 = np.hstack((r0_inertial, v0_inertial)) # [x, y, z, vx, vy, vz]
     state_dim = x0.size
-    sigma_std = 1000 * np.eye(state_dim)
+    sigma_std = 10000 * np.eye(state_dim)
     estimate_noise = np.linalg.cholesky(sigma_std) @ np.random.randn(6) 
-    x0 = x0 + estimate_noise 
+    x0 = x0 + estimate_noise
     sigma0 = 1000 * sigma_std
 
     # INIT EKF FUSION
@@ -101,12 +128,14 @@ if __name__ == "__main__":
     ekf.set_initial_state(x0, sigma0)
 
     # PROCESS NOISE
-    Q = 1*np.eye(state_dim)
+    Q = 1e1*np.eye(state_dim)
     ekf.set_process_noise(Q)
 
     # MEASUREMENT NOISE
-    vbn_noise = 66**2 * np.eye(3)
-    imu_noise = 1e-3 * np.eye(3)
+    if SET_SIM[0]: vbn_noise = 66**2 * np.eye(3) 
+    else: vbn_noise = 1e20 * np.eye(3)
+    if SET_SIM[1]: imu_noise = 1e-3 * np.eye(3)
+    else: imu_noise = 1e20 * np.eye(3)
     R = np.block([
         [vbn_noise, np.zeros((3,3))],
         [np.zeros((3,3)),imu_noise]
@@ -115,8 +144,13 @@ if __name__ == "__main__":
 
     # INIT LUNAR RENDER
     cam = Camera(r_mat=vbn_noise)
-    moon = LunarRender('../WAC_ROI',debug=False)
+    cam.crater_log = crater_log_fname
+    moon = LunarRender('WAC_ROI',debug=False)
     moon.verbose = False
+
+    # INIT IMU
+    from imu_simulator import IMUSimulator
+    imu = IMUSimulator(mass=mass)
 
     # ALLOCATE EKF ESTIMATES HISTORY
     ekf_estimates = np.zeros((traj_fixed_LLA.shape[0], state_dim))
@@ -140,18 +174,25 @@ if __name__ == "__main__":
 
         # VISION BASED NAVIGATION MEASUREMENTS
         # tile = moon.render_ll(lat=lat,lon=lon,alt=alt,deg=True)
-        LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
-        lat_meas, lon_meas, alt_meas = LLA_measure
-        R_new = np.block([
-            [mult*vbn_noise, np.zeros((3,3))],
-            [np.zeros((3,3)),imu_noise]
-        ])        
-        ekf.set_measurement_noise(R_new)
+        if SET_SIM[0]:
+            LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
+            lat_meas, lon_meas, alt_meas = LLA_measure
+            R_new = np.block([
+                [mult*vbn_noise, np.zeros((3,3))],
+                [np.zeros((3,3)),imu_noise]
+            ])        
+            ekf.set_measurement_noise(R_new)
+        else:
+            lat_meas, lon_meas, alt_meas = np.zeros(3)
 
         # IMU MEASUREMENTS
-        thrust_mag_noisy = traj_inertial[i-1,THRUST_MAG_NOISY_IDX]
-        thrust_dir_noisy = traj_inertial[i-1,THRUST_DIR_NOISY_X_IDX:THRUST_DIR_NOISY_Z_IDX+1]
-        a_mci_meas_imu = thrust_mag_noisy * thrust_dir_noisy + np.random.multivariate_normal(np.zeros(3),imu_noise)
+        if SET_SIM[1]:
+            thrust_mag_noisy = traj_inertial[i-1,THRUST_MAG_NOISY_IDX]
+            thrust_dir_noisy = traj_inertial[i-1,THRUST_DIR_NOISY_X_IDX:THRUST_DIR_NOISY_Z_IDX+1]
+            # a_mci_meas_imu = thrust_mag_noisy * thrust_dir_noisy + np.random.multivariate_normal(np.zeros(3),imu_noise) # simple noise
+            a_mci_meas_imu = imu.get_acceleration(thrust_mag_noisy * thrust_dir_noisy) # biased noise
+        else:
+            a_mci_meas_imu = np.zeros(3)
 
         # COMBINED MEASUREMENTS 
         t = traj_inertial[i-1, 0]  # time in seconds
@@ -170,11 +211,16 @@ if __name__ == "__main__":
         # STORE EKF ESTIMATES
         ekf_estimates[i] = ekf.x.flatten()
         sigma_sqrt[i] = np.sqrt(np.diag(ekf.sigma))
+        print(f"Sigma sqrt: {sigma_sqrt[i]}")
 
         print(f"Step {i}")
         print(f"True State (LLA): lat: {lat} deg, lon: {lon} deg, alt: {alt} m")
         print(f"Measurement (LLA): lat: {lat_meas} deg, lon: {lon_meas} deg, alt: {alt_meas} m")
         print(f"EKF Estimate (state): {ekf.x}")
+
+    ############################################################
+    # PLOTTING
+    ############################################################
 
     # Extract time and true ECI positions from traj_inertial
     time = traj_inertial[:, 0]
@@ -189,20 +235,21 @@ if __name__ == "__main__":
 
     for i in range(3):
         # Plot only up to 100 seconds
-        axs[i].plot(time[:], true_pos[:, i], label='True', color='black')
-        axs[i].plot(time[:], est_pos[:-1, i], label='EKF Estimate', color='red', linestyle='--')
+        end_time = len(time) - 5
+        axs[i].plot(time[:end_time], true_pos[:end_time, i], label='True', color='black')
+        axs[i].plot(time[:end_time], est_pos[:end_time, i], label='EKF Estimate', color='red', linestyle='--')
 
         # 1-sigma and 2-sigma bounds
         axs[i].fill_between(
-            time,
-            est_pos[:-1, i] - sigma_sqrt[:-1, i],
-            est_pos[:-1, i] + sigma_sqrt[:-1, i],
+            time[:end_time],
+            est_pos[:end_time, i] - sigma_sqrt[:end_time, i],
+            est_pos[:end_time, i] + sigma_sqrt[:end_time, i],
             color='orange', alpha=0.3, label='1σ'
         )
         axs[i].fill_between(
-            time,
-            est_pos[:-1, i] - 2*sigma_sqrt[:-1, i],
-            est_pos[:-1, i] + 2*sigma_sqrt[:-1, i],
+            time[:end_time],
+            est_pos[:end_time, i] - 2*sigma_sqrt[:end_time, i],
+            est_pos[:end_time, i] + 2*sigma_sqrt[:end_time, i],
             color='yellow', alpha=0.2, label='2σ'
         )
         axs[i].set_ylabel(labels[i])
@@ -210,28 +257,28 @@ if __name__ == "__main__":
         axs[i].grid(True)
 
     axs[2].set_xlabel('Time (s)')
-    plt.suptitle('True vs EKF Estimated ECI Position Components')
+    plt.suptitle(f'True vs EKF Estimated ECI Position Components ({sim_mode_str})')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
     # Compute estimation error
-    error = est_pos[:-1] - true_pos  # shape: (N, 3)
+    error = est_pos[:end_time] - true_pos[:end_time]  # shape: (N, 3)
     
     # Plot estimation error for each component
     fig, axs = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
     labels = ['x error (m)', 'y error (m)', 'z error (m)']
     
     for i in range(3):
-        axs[i].plot(time, error[:, i], color='blue')
+        axs[i].plot(time[:end_time], error[:end_time, i], color='blue')
         axs[i].set_ylabel(labels[i])
         axs[i].grid(True)
     
     axs[2].set_xlabel('Time (s)')
-    axs[3].plot(time, crater_count)
+    axs[3].plot(time[:end_time], crater_count[:end_time])
     axs[3].set_xlabel('Time (s)')
     axs[3].set_ylabel('Crater Count')
     axs[3].grid(True)
     
-    plt.suptitle('EKF Estimation Error in ECI Position Components')
+    plt.suptitle(f'EKF Estimation Error in ECI Position Components ({sim_mode_str})')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
 plt.show()

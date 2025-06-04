@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from crater_detector import CraterDetector
 from transformations import lla2mcmf, mcmf2lla
-from lunar_render import pixel_to_lat_lon, locate_crater
+from lunar_render import LunarRender, pixel_to_lat_lon, locate_crater
 import time
 """
 
@@ -22,7 +22,7 @@ class Camera():
         self.meas_dim = self.r_mat.shape[0]
         self.orb = cv2.ORB_create()
         self.detector = CraterDetector()
-        self.crater_log = "crater_logs_noisy.csv"
+        self.crater_log = "crater_logs_noisy_05.csv"
         self.df = pd.read_csv(self.crater_log, header=0)
         self.craters = self.df.values
         print(self.df)
@@ -57,13 +57,23 @@ class Camera():
             lon = np.float64(self.craters[tile, 1])
             alt = np.float64(self.craters[tile, 2])
             mult = self.craters[tile,3]
-            if np.float64(mult) == 100: mult = 5 
-            else: mult *= 1
-            mult = np.float64(mult)
+            mult = 1 + np.float64(mult)
 
             print(f"MULT IS: {mult}")
             
-            lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat / MOON_RADIUS_M)
+            # Uncomment for debugging
+            # if tile > 800 and mult != 100:
+            #     print(f"Testing: {lat,lon,alt}")
+            #     moon = LunarRender("WAC_ROI")
+            #     tile = moon.render_ll(lat=lat, lon=lon, alt=alt, deg=True)
+            #     self.detector.view_craters(tile)
+
+            if mult == 100:
+                mult = 5
+                lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat / MOON_RADIUS_M)
+            else:
+                lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat / MOON_RADIUS_M)
+
         else:
             predictions = self.detector.detect_craters(tile)
             mult = self.noise_multiplier(predictions, 0.5)

@@ -336,8 +336,8 @@ def lat_lon_to_pixel(lat, lon, pixel_scale=100, deg=False):
 # Example usage:
 if __name__ == "__main__":
     moon = LunarRender('WAC_ROI',debug=False)
-    tile = moon.render(u=28153, v=-18194, alt=100000)
-    # tile = moon.render_ll(lon=0, lat=80000, alt=75000, deg=True)
+    # tile = moon.render(u=28153, v=-18194, alt=100000)
+    tile = moon.render_ll(lon=0.0127, lat=17.34, alt=3212, deg=True)
     moon.tile2jpg(tile, "lunar_images/tile.jpg")
 
 # WAC_ROI_FARSIDE_DUSK:

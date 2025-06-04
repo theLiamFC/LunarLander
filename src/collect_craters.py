@@ -9,7 +9,7 @@ moon = LunarRender('WAC_ROI',debug=False)
 moon.verbose = False
 detector = CraterDetector()
 
-csv_filename = 'crater_logs_noisy.csv'
+csv_filename = 'crater_logs_noisy_05.csv'
 
 # Write header if file doesn't exist
 if not os.path.exists(csv_filename):
