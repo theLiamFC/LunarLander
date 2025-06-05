@@ -93,7 +93,7 @@ if __name__ == "__main__":
     ############################################################
 
     # CHOOSE VBN / IMU COMBINATION:
-    SET_SIM = [True, True] # [VBN, IMU]             <==== EDIT THIS FOR TURNING OFF/ON VBN & IMU
+    SET_SIM = [False, True] # [VBN, IMU]             <==== EDIT THIS FOR TURNING OFF/ON VBN & IMU
     sim_mode_str = ""
     if SET_SIM[0] and SET_SIM[1]: sim_mode_str = "VBN & IMU"
     elif SET_SIM[0]: sim_mode_str = "VBN"
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # INIT LUNAR RENDER
     cam = Camera(r_mat=vbn_noise)
     cam.crater_log = crater_log_fname
-    moon = LunarRender('../WAC_ROI',debug=False)
+    moon = LunarRender('WAC_ROI',debug=False)
     moon.verbose = False
 
     # INIT IMU
@@ -177,6 +177,10 @@ if __name__ == "__main__":
         if SET_SIM[0]:
             LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
             lat_meas, lon_meas, alt_meas = LLA_measure
+
+            Q_new = (1e4*(1 / mult)) * np.eye(state_dim)     
+            ekf.set_process_noise(Q_new)
+
             R_new = np.block([
                 [mult*vbn_noise, np.zeros((3,3))],
                 [np.zeros((3,3)),imu_noise]
@@ -189,8 +193,8 @@ if __name__ == "__main__":
         if SET_SIM[1]:
             thrust_mag_noisy = traj_inertial[i-1,THRUST_MAG_NOISY_IDX]
             thrust_dir_noisy = traj_inertial[i-1,THRUST_DIR_NOISY_X_IDX:THRUST_DIR_NOISY_Z_IDX+1]
-            # a_mci_meas_imu = thrust_mag_noisy * thrust_dir_noisy + np.random.multivariate_normal(np.zeros(3),imu_noise) # simple noise
-            a_mci_meas_imu = imu.get_acceleration(thrust_mag_noisy * thrust_dir_noisy) # biased noise
+            a_mci_meas_imu = thrust_mag_noisy * thrust_dir_noisy + np.random.multivariate_normal(np.zeros(3),imu_noise) # simple noise
+            # a_mci_meas_imu = imu.get_acceleration(thrust_mag_noisy * thrust_dir_noisy) # biased noise
         else:
             a_mci_meas_imu = np.zeros(3)
 
@@ -205,8 +209,10 @@ if __name__ == "__main__":
         thrust_dir_nom = traj_inertial[i-1,THRUST_DIR_NOM_X_IDX:THRUST_DIR_NOM_Z_IDX+1]
 
         # EKF PREDICT & UPDATE
-        ekf.predict(time_step, thrust_mag_nom * thrust_dir_nom)
-        ekf.update(full_meas, thrust_mag_nom * thrust_dir_nom)
+        # ekf.predict(time_step, thrust_mag_nom * thrust_dir_nom)
+        # ekf.update(full_meas, thrust_mag_nom * thrust_dir_nom)
+        ekf.predict(time_step, a_mci_meas_imu)
+        ekf.update(full_meas, a_mci_meas_imu)
 
         # STORE EKF ESTIMATES
         ekf_estimates[i] = ekf.x.flatten()
@@ -256,6 +262,13 @@ if __name__ == "__main__":
         axs[i].legend()
         axs[i].grid(True)
 
+        # Add y-axis scaling calculation
+        y_min = min(np.min(true_pos[:end_time, i]), np.min(est_pos[:end_time, i]))
+        y_max = max(np.max(true_pos[:end_time, i]), np.max(est_pos[:end_time, i]))
+        y_range = y_max - y_min
+        padding = 0.1 * y_range  # 10% padding
+        axs[i].set_ylim(y_min - padding, y_max + padding)
+
     axs[2].set_xlabel('Time (s)')
     plt.suptitle(f'True vs EKF Estimated ECI Position Components ({sim_mode_str})')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
@@ -264,7 +277,9 @@ if __name__ == "__main__":
     error = est_pos[:end_time] - true_pos[:end_time]  # shape: (N, 3)
     
     # Plot estimation error for each component
-    fig, axs = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
+    if not SET_SIM[0]: num_sub_plot = 3
+    else: num_sub_plot = 4
+    fig, axs = plt.subplots(num_sub_plot, 1, figsize=(10, 8), sharex=True)
     labels = ['x error (m)', 'y error (m)', 'z error (m)']
     
     for i in range(3):
@@ -279,11 +294,12 @@ if __name__ == "__main__":
             axs[i].set_title('EKF Error in Z Position')
     
     axs[2].set_xlabel('Time (s)')
-    axs[3].plot(time[:end_time], crater_count[:end_time])
-    axs[3].set_xlabel('Time (s)')
-    axs[3].set_ylabel('Crater Count')
-    axs[3].grid(True)
-    axs[3].set_title('Crater Count vs Time')
+    if SET_SIM[0]:
+        axs[3].plot(time[:end_time], crater_count[:end_time])
+        axs[3].set_xlabel('Time (s)')
+        axs[3].set_ylabel('Crater Count')
+        axs[3].grid(True)
+        axs[3].set_title('Crater Count vs Time')
     
     plt.suptitle(f'EKF Estimation Error in ECI Position Components ({sim_mode_str})')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
@@ -291,7 +307,5 @@ if __name__ == "__main__":
     print(f"Min ERROR: {np.min(np.abs(error[:end_time,:]),axis=0)}")
     print(f"MAX ERROR: {np.max(np.abs(error[:end_time,:]),axis=0)}")
     print(f"Average ERROR: {np.mean(np.abs(error[:end_time,:]), axis=0)}")
-
-    
 
 plt.show()

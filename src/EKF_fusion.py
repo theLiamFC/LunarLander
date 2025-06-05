@@ -39,7 +39,8 @@ class EKF_fusion:
         v = x[3:6].flatten()
         mu = self.mu
         norm_r = np.linalg.norm(r)
-        a = (-mu * r / norm_r**3) + (u / self.mass)  # u is thrust
+        # a = (-mu * r / norm_r**3) + (u / self.mass)  # u is thrust
+        a = (u / self.mass)  # u is thrust
         dxdt = np.hstack((v, a))
         return dxdt.reshape(-1, 1)
 
