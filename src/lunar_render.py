@@ -105,13 +105,15 @@ class LunarRender:
                 'top': src.bounds.top,
                 'transform': src.transform if not wrap else Affine.translation(-10916400.0, 0) * src.transform
             }
-            
-            
 
             self.min_max = [min(self.images[img_path]['left'], self.min_max[0]),
                             min(self.images[img_path]['bottom'], self.min_max[1]),
                             max(self.images[img_path]['right'], self.min_max[2]),      
                             max(self.images[img_path]['top'], self.min_max[3])]
+            
+            # for plotting trajectory
+            self.MIN_RATIO = 1.0 
+            self.MAX_DIM = 6000 
 
     def __del__(self):
         """
@@ -287,20 +289,17 @@ class LunarRender:
         # Calculate natural dimensions
         natural_width = maxx - minx
         natural_height = maxy - miny
-        
-        MAX_DIM = 2400
-        MIN_RATIO = 4.0
 
         # Adjust coordinate bounds to enforce aspect ratio
-        if natural_height / natural_width > MIN_RATIO:
+        if natural_height / natural_width > self.MIN_RATIO:
             # Too tall - expand width
-            target_width = natural_height / MIN_RATIO
+            target_width = natural_height / self.MIN_RATIO
             width_expand = (target_width - natural_width) / 2
             minx -= width_expand
             maxx += width_expand
-        elif natural_width / natural_height > MIN_RATIO:
+        elif natural_width / natural_height > self.MIN_RATIO:
             # Too wide - expand height  
-            target_height = natural_width / MIN_RATIO
+            target_height = natural_width / self.MIN_RATIO
             height_expand = (target_height - natural_height) / 2
             miny -= height_expand
             maxy += height_expand
@@ -310,7 +309,7 @@ class LunarRender:
         final_height = maxy - miny
 
         # Scale down if exceeding maximum dimension
-        scale_factor = min(MAX_DIM/final_width, MAX_DIM/final_height)
+        scale_factor = min(self.MAX_DIM/final_width, self.MAX_DIM/final_height)
         if scale_factor < 1:
             final_width *= scale_factor
             final_height *= scale_factor
@@ -419,15 +418,14 @@ class LunarRender:
         # Apply same aspect ratio adjustments as in render function
         natural_width = maxx - minx
         natural_height = maxy - miny
-        MIN_RATIO = 4.0
         
-        if natural_height / natural_width > MIN_RATIO:
-            target_width = natural_height / MIN_RATIO
+        if natural_height / natural_width > self.MIN_RATIO:
+            target_width = natural_height / self.MIN_RATIO
             width_expand = (target_width - natural_width) / 2
             minx -= width_expand
             maxx += width_expand
-        elif natural_width / natural_height > MIN_RATIO:
-            target_height = natural_width / MIN_RATIO
+        elif natural_width / natural_height > self.MIN_RATIO:
+            target_height = natural_width / self.MIN_RATIO
             height_expand = (target_height - natural_height) / 2
             miny -= height_expand
             maxy += height_expand
@@ -523,14 +521,14 @@ class LunarRender:
         ax.set_aspect('equal', adjustable='box')
 
         # After all scatter plotting:
-        norm = Normalize(vmin=0.4, vmax=1.0)
+        norm = Normalize(vmin=0.5, vmax=1.0)
         sm = ScalarMappable(norm=norm, cmap=plt.cm.plasma)
         sm.set_array([])  # Only needed for older matplotlib versions
 
         # Add colorbar to the current axes
         cbar = plt.colorbar(sm, ax=ax, pad=0.02)
         cbar.set_label('Crater Confidence', fontsize=12)
-        cbar.set_ticks([0.4, 0.6, 0.8, 1.0])
+        cbar.set_ticks([0.5, 0.75, 1.0])
         cbar.ax.tick_params(labelsize=10)
         
         # Tight layout

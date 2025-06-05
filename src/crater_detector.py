@@ -4,7 +4,8 @@ from inference_sdk import InferenceHTTPClient
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from api_secrets import RF_API_KEY
+from src.api_secrets import RF_API_KEY
+import pandas as pd
 
 class CraterDetector:
     def __init__(self):
@@ -121,14 +122,21 @@ class CraterDetector:
         
         original_points = predictions[:,:2].reshape(1,-1) #gather all the x,y positions 
         
-        
-    
-        
-            
-            
-        
-        
-        
+def get_crater_count(crater_log_fname):
+    craters = pd.read_csv(crater_log_fname, header=0)
+
+    crater_count = []
+
+    for row in range(craters.shape[0]):
+        count = 0
+        for i in range(4,len(craters.columns),3):
+            if not np.isnan(craters.iloc[row,i]):
+                count+=1
+            else:
+                break
+        crater_count.append(count)
+
+    return crater_count
     
 # example usage
 if __name__ == "__main__":

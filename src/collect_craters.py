@@ -9,7 +9,7 @@ moon = LunarRender('WAC_ROI',debug=False)
 moon.verbose = False
 detector = CraterDetector()
 
-csv_filename = 'crater_logs_noisy_05.csv'
+csv_filename = 'src/csv_files/crater_logs_noisy_05.csv'
 
 # Write header if file doesn't exist
 if not os.path.exists(csv_filename):
@@ -30,7 +30,7 @@ if not os.path.exists(csv_filename):
             'Crater10_U', 'Crater10_V','Crater10_Conf',
         ])
 
-trajectory = np.genfromtxt('traj_all.csv',delimiter=',',skip_header=True)
+trajectory = np.genfromtxt('src/csv_files/traj_all.csv',delimiter=',',skip_header=True)
 
 for i, point in enumerate(trajectory):
     lat, lon, alt  = point[0:3]

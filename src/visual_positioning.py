@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
 import pandas as pd
-from crater_detector import CraterDetector
-from transformations import lla2mcmf, mcmf2lla
-from lunar_render import LunarRender, pixel_to_lat_lon, locate_crater
+from src.crater_detector import CraterDetector
+from src.transformations import lla2mcmf, mcmf2lla
+from src.lunar_render import LunarRender, pixel_to_lat_lon, locate_crater
 import time
 """
 
@@ -22,7 +22,7 @@ class Camera():
         self.meas_dim = self.r_mat.shape[0]
         self.orb = cv2.ORB_create()
         self.detector = CraterDetector()
-        self.crater_log = "crater_logs_noisy_05.csv"
+        self.crater_log = "src/csv_files/crater_logs_noisy_05.csv"
         self.df = pd.read_csv(self.crater_log, header=0)
         self.craters = self.df.values
         print(self.df)

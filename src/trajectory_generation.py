@@ -1,5 +1,5 @@
 import numpy as np
-from transformations import lla_to_mci
+from src.transformations import lla_to_mci
 
 def generate_3d_trajectory(
     start_lat, start_lon, start_alt,

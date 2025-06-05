@@ -27,7 +27,7 @@ if __name__ == "__main__":
     df_lla = pd.DataFrame(traj_fixed_LLA, columns=["Latitude_deg", "Longitude_deg", "Altitude_m"])
 
     # Save to CSV
-    df_lla.to_csv("traj_fixed_LLA.csv", index=False)
+    df_lla.to_csv("src/csv_files/traj_fixed_LLA.csv", index=False)
 
     # Assuming traj is a NumPy array with shape (N, 13+)
     initial_row = traj_inertial[0]

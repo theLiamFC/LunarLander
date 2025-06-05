@@ -1,14 +1,12 @@
-from lunar_simulator import LunarSimulator
-from visual_positioning import Camera
-from trajectory_generation import generate_3d_trajectory
-from transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to_mci
+from src.visual_positioning import Camera
+from src.trajectory_generation import generate_3d_trajectory
+from src.transformations import convert_traj_to_moon_fixed, mcmf_traj_to_lla, lla_to_mci
 import numpy as np
 import pandas as pd
-from EKF import EKF
-from EKF_fusion import EKF_fusion
-from lunar_render import LunarRender
+from src.EKF_fusion import EKF_fusion
+from src.lunar_render import LunarRender
 import matplotlib.pyplot as plt
-from plot_craters import get_crater_count
+from src.crater_detector import get_crater_count
 
 # TRAJECTORY INERTIAL INDEXING
 TIME_IDX = 0
@@ -73,7 +71,7 @@ if __name__ == "__main__":
     )
 
     # Save to CSV
-    df_lla.to_csv("traj_all.csv", index=False)
+    df_lla.to_csv("src/csv_files/traj_all.csv", index=False)
 
     # Assuming traj is a NumPy array with shape (N, 13+)
     initial_row = traj_inertial[0]
@@ -93,7 +91,7 @@ if __name__ == "__main__":
     ############################################################
 
     # CHOOSE VBN / IMU COMBINATION:
-    SET_SIM = [False, True] # [VBN, IMU]             <==== EDIT THIS FOR TURNING OFF/ON VBN & IMU
+    SET_SIM = [True, True] # [VBN, IMU]             <==== EDIT THIS FOR TURNING OFF/ON VBN & IMU
     sim_mode_str = ""
     if SET_SIM[0] and SET_SIM[1]: sim_mode_str = "VBN & IMU"
     elif SET_SIM[0]: sim_mode_str = "VBN"
@@ -103,9 +101,9 @@ if __name__ == "__main__":
     SET_NOISE = 5 # 1, 5                            <==== EDIT THIS FOR TRAJECTORY NOISE
     crater_log_fname = ""
     if SET_NOISE == 5:
-        crater_log_fname = "crater_logs_noisy_01.csv"
+        crater_log_fname = "src/csv_files/crater_logs_noisy_01.csv"
     elif SET_NOISE == 1:
-        crater_log_fname = "crater_logs_noisy_05.csv"
+        crater_log_fname = "src/csv_files/crater_logs_noisy_05.csv"
     crater_count = get_crater_count(crater_log_fname)
 
     ############################################################
@@ -145,11 +143,11 @@ if __name__ == "__main__":
     # INIT LUNAR RENDER
     cam = Camera(r_mat=vbn_noise)
     cam.crater_log = crater_log_fname
-    moon = LunarRender('WAC_ROI',debug=False)
+    moon = LunarRender('src/WAC_ROI',debug=False)
     moon.verbose = False
 
     # INIT IMU
-    from imu_simulator import IMUSimulator
+    from src.imu_simulator import IMUSimulator
     imu = IMUSimulator(mass=mass)
 
     # ALLOCATE EKF ESTIMATES HISTORY
@@ -178,9 +176,6 @@ if __name__ == "__main__":
             LLA_measure, mult = cam.get_position_global(i, alt, log=True, deg=True)
             lat_meas, lon_meas, alt_meas = LLA_measure
 
-            Q_new = (1e4*(1 / mult)) * np.eye(state_dim)     
-            ekf.set_process_noise(Q_new)
-
             R_new = np.block([
                 [mult*vbn_noise, np.zeros((3,3))],
                 [np.zeros((3,3)),imu_noise]
@@ -193,8 +188,8 @@ if __name__ == "__main__":
         if SET_SIM[1]:
             thrust_mag_noisy = traj_inertial[i-1,THRUST_MAG_NOISY_IDX]
             thrust_dir_noisy = traj_inertial[i-1,THRUST_DIR_NOISY_X_IDX:THRUST_DIR_NOISY_Z_IDX+1]
-            a_mci_meas_imu = thrust_mag_noisy * thrust_dir_noisy + np.random.multivariate_normal(np.zeros(3),imu_noise) # simple noise
-            # a_mci_meas_imu = imu.get_acceleration(thrust_mag_noisy * thrust_dir_noisy) # biased noise
+            # a_mci_meas_imu = thrust_mag_noisy * thrust_dir_noisy + np.random.multivariate_normal(np.zeros(3),imu_noise) # simple noise
+            a_mci_meas_imu = imu.get_acceleration(thrust_mag_noisy * thrust_dir_noisy) # biased noise
         else:
             a_mci_meas_imu = np.zeros(3)
 
@@ -209,10 +204,8 @@ if __name__ == "__main__":
         thrust_dir_nom = traj_inertial[i-1,THRUST_DIR_NOM_X_IDX:THRUST_DIR_NOM_Z_IDX+1]
 
         # EKF PREDICT & UPDATE
-        # ekf.predict(time_step, thrust_mag_nom * thrust_dir_nom)
-        # ekf.update(full_meas, thrust_mag_nom * thrust_dir_nom)
-        ekf.predict(time_step, a_mci_meas_imu)
-        ekf.update(full_meas, a_mci_meas_imu)
+        ekf.predict(time_step, thrust_mag_nom * thrust_dir_nom)
+        ekf.update(full_meas, thrust_mag_nom * thrust_dir_nom)
 
         # STORE EKF ESTIMATES
         ekf_estimates[i] = ekf.x.flatten()
