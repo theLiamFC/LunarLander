@@ -25,7 +25,6 @@ class Camera():
         self.crater_log = "src/csv_files/crater_logs_noisy_05.csv"
         self.df = pd.read_csv(self.crater_log, header=0)
         self.craters = self.df.values
-        print(self.df)
         
     def noise_multiplier(self, predictions, thresh=0.5):
         num_craters = predictions.shape[0]        
@@ -68,7 +67,7 @@ class Camera():
             #     tile = moon.render_ll(lat=lat, lon=lon, alt=alt, deg=True)
             #     self.detector.view_craters(tile)
 
-            if mult == 100:
+            if mult == 101:
                 mult = 5
                 lat, lon, alt = np.array([lat, lon, alt]) + np.random.multivariate_normal(np.zeros(3), mult * self.r_mat / MOON_RADIUS_M)
             else:

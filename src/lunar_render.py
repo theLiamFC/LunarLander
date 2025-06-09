@@ -41,7 +41,7 @@ class Tile(NamedTuple):
     time: float # simulation time of render
 
 class LunarRender:
-    def __init__(self, folder_path, foc=21e-3, size=512, debug=False):
+    def __init__(self, folder_path, foc=21e-3, size=1080, debug=False):
         """
         Initiates the LunarRender class.
 

@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-from lunar_render import Tile
+from src.lunar_render import Tile
 
 class VisualOdometer:
     def __init__(self, foc=21e-3):
@@ -13,13 +13,13 @@ class VisualOdometer:
         ----------
         """
         self.foc = foc # focal length: m
-        self.p_size = 24e-6 # pixel size in m
+        self.p_size = 11e-6 # pixel size in m
         self.s_dim = self.p_size * 1024 # sensor dimension: m
         self.fov = 2 * np.arctan(self.s_dim / (2 * self.foc)) # radians
 
         self.orb = cv2.ORB_create()
     
-    def get_velocity(self, state1, state2, tile1, tile2, plot=False):
+    def get_velocity(self, alt1, alt2, tile1, tile2, plot=False):
         """
         Calculate velocity using ORB feature matching between two images.
         
@@ -44,37 +44,37 @@ class VisualOdometer:
         kp2, des2 = self.orb.detectAndCompute(img2, None)
         
         #assert des1 is not None and des2 is not None, "Descriptors are None, check image inputs"
-        if des1 is None:
-            plt.figure(figsize=(15, 8))
-            plt.imshow(img1, cmap='gray')
-            plt.title(f'Des1 is None - Image 1')
-            plt.axis('off')
-            plt.show()
-        if des2 is None:
-            plt.figure(figsize=(15, 8))
-            plt.imshow(img2, cmap='gray')
-            plt.title(f'Des2 is None - Image 2')
-            plt.axis('off')
-            plt.show()
+        # if des1 is None:
+        #     plt.figure(figsize=(15, 8))
+        #     plt.imshow(img1, cmap='gray')
+        #     plt.title(f'Des1 is None - Image 1')
+        #     plt.axis('off')
+        #     plt.show()
+        # if des2 is None:
+        #     plt.figure(figsize=(15, 8))
+        #     plt.imshow(img2, cmap='gray')
+        #     plt.title(f'Des2 is None - Image 2')
+        #     plt.axis('off')
+        #     plt.show()
         
         # Match features using BFMatcher
         bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
         matches = bf.match(des1, des2)
         
-        if len(matches) < 4: plot = True
+        # if len(matches) < 4: plot = True
 
         # Sort matches by distance
         matches = sorted(matches, key=lambda x: x.distance)
 
-        if plot:
-            print("Plotting matches...")
-            img_matches = cv2.drawMatches(img1, kp1, img2, kp2, matches[:20], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        # if tile2.time == 501 or tile2.time == 502 or tile2.time == 508:
+        #     print("Plotting matches...")
+        #     img_matches = cv2.drawMatches(img1, kp1, img2, kp2, matches[:20], None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
-            plt.figure(figsize=(15, 8))
-            plt.imshow(img_matches, cmap='gray')
-            plt.title(f'Feature Matches ({len(matches)} total)')
-            plt.axis('off')
-            plt.show()
+        #     plt.figure(figsize=(15, 8))
+        #     plt.imshow(img_matches, cmap='gray')
+        #     plt.title(f'Feature Matches ({len(matches)} total)')
+        #     plt.axis('off')
+        #     plt.show()
             
         assert len(matches) >= 4, "Not enough matches found to compute homography"
         
@@ -82,19 +82,16 @@ class VisualOdometer:
         src_pts = np.float32([kp1[m.queryIdx].pt for m in matches[:20]]).reshape(-1, 1, 2)
         dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches[:20]]).reshape(-1, 1, 2)
 
-        tx = np.mean(np.percentile(dst_pts[:,0,0] - src_pts[:,0,0], 1.0))
-        ty = np.mean(np.percentile(dst_pts[:,0,1] - src_pts[:,0,1],1.0))
+        tx = np.mean(np.percentile(dst_pts[:,0,0] - src_pts[:,0,0], 0.95))
+        ty = np.mean(np.percentile(dst_pts[:,0,1] - src_pts[:,0,1],0.95))
         dx_pixels = tx
         dy_pixels = ty
 
-        print(f"Pixel Displacement: dx={dx_pixels}, dy={dy_pixels}")
-
-        height1 = state1[2]
-        height2 = state2[2]
+        height1 = alt1
+        height2 = alt2
         avg_height = (height1 + height2) / 2.0
         
-        meters_per_pixel = 2 * (avg_height/100 * self.p_size) / self.foc
-        print(f"meters_per_pixel: {meters_per_pixel}")
+        meters_per_pixel = 2 * (avg_height * self.p_size) / self.foc
                 
         # Convert to real-world displacement
         dx_meters = -dx_pixels * meters_per_pixel
@@ -116,7 +113,7 @@ if __name__ == "__main__":
     # Example usage
     
     odometer = VisualOdometer()
-    moon = LunarRender("WAC_ROI")
+    moon = LunarRender("src/WAC_ROI")
 
     minU = 3000.0
     maxU  = 4000.0
@@ -143,21 +140,17 @@ if __name__ == "__main__":
         tile2 = moon.render(u=u[i], v=v[i], alt=altitudes[i], time=i)
         tile_history.append(tile2)
         
-        # Simulate states (x, y, z) for the two tiles
-        state1 = np.array([u[i-1], v[i-1], altitudes[i-1]])
-        state2 = np.array([u[i], v[i], altitudes[i]])
-        
         # Get velocity
-        vx[i], vy[i] = odometer.get_velocity(state1, state2, tile1, tile2, plot=False)
+        vx[i], vy[i] = odometer.get_velocity(altitudes[i-1],  altitudes[i], tile1, tile2, plot=False)
         dt = tile2.time - tile1.time  # Should be 1 if time=i
-        true_vx[i] = (u[i] - u[i-1]) / dt
-        true_vy[i] = (v[i] - v[i-1]) / dt
+        true_vx[i] = 100*(u[i] - u[i-1]) / dt
+        true_vy[i] = 100*(v[i] - v[i-1]) / dt
 
         if true_vx[i] - vx[i] > 3000 or true_vy[i] - vy[i] > 3000:
-            odometer.get_velocity(state1, state2, tile1, tile2, plot=True)
+            odometer.get_velocity(altitudes[i-1], altitudes[i], tile1, tile2, plot=True)
         elif i == rando:
             print("random check")
-            odometer.get_velocity(state1, state2, tile1, tile2, plot=True)
+            odometer.get_velocity(altitudes[i-1], altitudes[i], tile1, tile2, plot=True)
 
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
     time = np.linspace(0, n-1, n)  # Assuming time is just the index for simplicity

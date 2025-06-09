@@ -64,10 +64,12 @@ class EKF_fusion:
             u : 3x1 control input (force vector in Newtons)
 
         Output:
-            6x1 measurement prediction: [position; acceleration]
+            9x1 measurement prediction: [position; velocity; acceleration]
         """
         r = x[0:3].reshape((3,))
         r_norm = np.linalg.norm(r)
+
+        v = x[3:6]
 
         # Gravitational acceleration
         a_gravity = -self.mu * r / (r_norm**3)
@@ -79,7 +81,7 @@ class EKF_fusion:
         a_pred = a_control #+ a_gravity
 
         # Output: [position; acceleration]
-        return np.vstack((r.reshape((3,1)), a_pred.reshape((3,1))))
+        return np.vstack((r.reshape((3,1)), v.reshape(3,1), a_pred.reshape((3,1))))
     
     @staticmethod
     def dadr_dr(r, mu):
@@ -107,9 +109,10 @@ class EKF_fusion:
     
     def jacobian_C(self, x):
         C_top = np.hstack((np.eye(3), np.zeros((3,3))))
+        C_mid = np.hstack((np.zeros((3,3)),np.eye(3)))
         # Acceleration measurement only depends on control input (not state)
         C_bottom = np.zeros((3,6))  # Both position and velocity derivatives are zero
-        C = np.vstack((C_top, C_bottom))
+        C = np.vstack((C_top, C_mid, C_bottom))
         return C
 
 

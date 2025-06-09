@@ -242,3 +242,49 @@ def mcmf_traj_to_lla(traj_fixed_m, R_moon=1737400.0):
         lla_array.append([lat, lon, alt])
 
     return np.array(lla_array)
+
+def mci_to_lla(x_inertial, y_inertial, z_inertial, t=0.0, theta0=0.0):
+    # Convert MCI to Moon-fixed frame
+    R_moon = 1.7374e6  # meters
+    omega_moon = 2 * np.pi / (27.321661 * 86400)  # Moon's angular velocity (rad/s)
+    
+    # Calculate rotation angle
+    theta = theta0 + omega_moon * t
+    
+    # Create inverse rotation matrix (transpose of original)
+    R_z_inv = np.array([
+        [np.cos(theta), np.sin(theta), 0],
+        [-np.sin(theta), np.cos(theta), 0],
+        [0, 0, 1]
+    ])
+    
+    # Rotate from inertial to fixed frame
+    r_inertial = np.array([x_inertial, y_inertial, z_inertial])
+    r_fixed = R_z_inv @ r_inertial
+    x_fixed, y_fixed, z_fixed = r_fixed
+    
+    # Convert fixed Cartesian to LLA
+    xy_fixed = np.sqrt(x_fixed**2 + y_fixed**2)
+    
+    # Calculate longitude (handle poles)
+    lon_rad = np.arctan2(y_fixed, x_fixed) if xy_fixed > 1e-9 else 0.0
+    
+    # Calculate latitude
+    lat_rad = np.arctan2(z_fixed, xy_fixed)
+    
+    # Calculate altitude
+    alt_m = np.linalg.norm(r_fixed) - R_moon
+    
+    return np.degrees(lat_rad), np.degrees(lon_rad), alt_m
+
+def get_enu_to_mci_rotation(lat_rad, lon_rad):
+    slon = np.sin(lon_rad)
+    clon = np.cos(lon_rad)
+    slat = np.sin(lat_rad)
+    clat = np.cos(lat_rad)
+
+    return np.array([
+        [-slon,          -clon*slat,     clon*clat],
+        [ clon,          -slon*slat,     slon*clat],
+        [ 0.0,            clat,          slat     ]
+    ])
